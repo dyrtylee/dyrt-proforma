@@ -82,13 +82,9 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
   const monthlyDebtService = calcMonthlyPayment(debtPrincipal, inputs.loanInterestRate, inputs.loanTermYears);
 
   // --- FIXED MONTHLY COSTS ---
-  const baseLaborCost =
-    inputs.laborFloorSupervisor +
-    inputs.laborDepackFeeders +
-    inputs.laborQCSorting +
-    inputs.laborOverheadMgmt +
-    inputs.laborTruckDrivers +
-    inputs.laborOvertime;
+  // FTE: 40 hrs/week * 52 weeks / 12 months = 173.33 hrs/month
+  const monthlyHoursPerEmployee = (40 * 52) / 12;
+  const baseLaborCost = inputs.numEmployees * inputs.hourlyRate * monthlyHoursPerEmployee;
   const totalLabor = baseLaborCost * (1 + inputs.payrollTaxRate);
   const machineCogs = inputs.numComposters * inputs.machineCogsPerUnit;
   const truckOpex = inputs.numTrucks * (

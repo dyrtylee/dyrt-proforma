@@ -711,7 +711,7 @@ function SensitivityTab({ inputs }: { inputs: FacilityInputs }) {
       { variable: "# Composters", key: "numComposters", low: Math.max(6, inputs.numComposters - 8), high: inputs.numComposters + 12, fmt: "number" },
       { variable: "Facility Lease", key: "facilityLease", low: inputs.facilityLease * 0.7, high: inputs.facilityLease * 1.3, fmt: "currency" },
       { variable: "Composter Cost", key: "composterCost", low: inputs.composterCost * 0.7, high: inputs.composterCost * 1.3, fmt: "currency" },
-      { variable: "Labor Costs", key: "laborQCSorting", low: inputs.laborQCSorting * 0.7, high: inputs.laborQCSorting * 1.3, fmt: "currency" },
+      { variable: "Hourly Rate ($/hr)", key: "hourlyRate", low: inputs.hourlyRate * 0.7, high: inputs.hourlyRate * 1.3, fmt: "currency" },
       { variable: "Compost Price ($/CY)", key: "compostPricePerCY", low: inputs.compostPricePerCY * 0.5, high: inputs.compostPricePerCY * 1.5, fmt: "currency" },
       { variable: "Dewatering %", key: "dewateringReduction", low: 0.65, high: 0.90, fmt: "percent" },
     ];

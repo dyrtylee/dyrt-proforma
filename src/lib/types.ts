@@ -29,12 +29,8 @@ export interface FacilityInputs {
 
   // Operating Costs (monthly)
   facilityLease: number;
-  laborFloorSupervisor: number;
-  laborDepackFeeders: number;
-  laborQCSorting: number;
-  laborOverheadMgmt: number;
-  laborTruckDrivers: number;
-  laborOvertime: number;
+  numEmployees: number;
+  hourlyRate: number; // $/hr
   payrollTaxRate: number; // percentage (0-1)
   machineCogsPerUnit: number; // monthly per composter
   utilities: number;

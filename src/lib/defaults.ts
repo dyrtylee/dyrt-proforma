@@ -31,12 +31,8 @@ export const defaultInputs: FacilityInputs = {
 
   // Operating Costs (monthly)
   facilityLease: 15000,
-  laborFloorSupervisor: 6000,
-  laborDepackFeeders: 11000,
-  laborQCSorting: 16500,
-  laborOverheadMgmt: 5000,
-  laborTruckDrivers: 16500,
-  laborOvertime: 2000,
+  numEmployees: 10,
+  hourlyRate: 30, // $/hr
   payrollTaxRate: 0.20,
   machineCogsPerUnit: 1200,
   utilities: 3500,
@@ -112,12 +108,8 @@ export const inputConfigs: InputConfig[] = [
 
   // Operating Costs
   { key: "facilityLease", label: "Monthly Facility Lease", min: 5000, max: 60000, step: 1000, format: "currency", group: "Monthly Operating Costs" },
-  { key: "laborFloorSupervisor", label: "Floor Supervisor", min: 0, max: 15000, step: 500, format: "currency", group: "Monthly Operating Costs" },
-  { key: "laborDepackFeeders", label: "Depack Feeders", min: 0, max: 30000, step: 500, format: "currency", group: "Monthly Operating Costs" },
-  { key: "laborQCSorting", label: "QC / Contamination Sort", min: 0, max: 40000, step: 500, format: "currency", group: "Monthly Operating Costs" },
-  { key: "laborOverheadMgmt", label: "Overhead Management", min: 0, max: 20000, step: 500, format: "currency", group: "Monthly Operating Costs" },
-  { key: "laborTruckDrivers", label: "Truck Drivers", min: 0, max: 40000, step: 500, format: "currency", group: "Monthly Operating Costs" },
-  { key: "laborOvertime", label: "Driver Overtime", min: 0, max: 10000, step: 250, format: "currency", group: "Monthly Operating Costs" },
+  { key: "numEmployees", label: "Number of Employees", min: 1, max: 30, step: 1, format: "number", group: "Monthly Operating Costs" },
+  { key: "hourlyRate", label: "Hourly Rate ($/hr)", min: 15, max: 60, step: 1, format: "currency", group: "Monthly Operating Costs" },
   { key: "payrollTaxRate", label: "Payroll Tax Rate", min: 0.10, max: 0.35, step: 0.01, format: "percent", group: "Monthly Operating Costs" },
   { key: "machineCogsPerUnit", label: "Machine COGS (per unit/mo)", min: 500, max: 3000, step: 100, format: "currency", group: "Monthly Operating Costs" },
   { key: "utilities", label: "Utilities", min: 1000, max: 15000, step: 500, format: "currency", group: "Monthly Operating Costs" },

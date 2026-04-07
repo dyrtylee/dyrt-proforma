@@ -97,6 +97,13 @@ export default function ProFormaPage() {
                 <span className="text-sm">?</span>
               </button>
               <button
+                onClick={() => setInputs({ ...defaultInputs })}
+                className="px-3 py-1.5 text-xs font-medium text-muted border border-border rounded-lg hover:text-foreground hover:border-border-light transition-colors"
+                title="Reset all variables to defaults"
+              >
+                Reset
+              </button>
+              <button
                 onClick={exportToExcel}
                 className="px-3 py-1.5 text-xs font-medium bg-accent/15 text-accent border border-accent/30 rounded-lg hover:bg-accent/25 transition-colors"
               >

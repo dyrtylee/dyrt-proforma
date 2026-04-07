@@ -21,7 +21,7 @@ const COLORS = [
   "#f59e0b", "#a855f7", "#0ea5e9",
 ];
 
-const TABS = ["Summary", "CAPEX", "Operations", "Break-Even", "Projections", "Sensitivity"] as const;
+const TABS = ["Summary", "CAPEX", "Operations", "Break-Even", "Projections", "Sensitivity", "Loan"] as const;
 type Tab = (typeof TABS)[number];
 
 const CHART_GRID = "#1e293b";
@@ -197,6 +197,7 @@ export default function ProFormaPage() {
           {activeTab === "Break-Even" && <BreakEvenTab result={result} inputs={inputs} />}
           {activeTab === "Projections" && <ProjectionsTab result={result} />}
           {activeTab === "Sensitivity" && <SensitivityTab inputs={inputs} />}
+          {activeTab === "Loan" && <LoanTab inputs={inputs} result={result} />}
         </div>
       </main>
     </div>
@@ -867,6 +868,170 @@ function SensitivityTab({ inputs }: { inputs: FacilityInputs }) {
                 <td className={`py-2.5 text-right font-mono ${s.lowMargin < 0 ? "text-d-red" : "text-d-green"}`}>{fmtPercent(s.lowMargin)}</td>
                 <td className={`py-2.5 text-right font-mono ${s.baseMargin < 0 ? "text-d-red" : "text-d-green"}`}>{fmtPercent(s.baseMargin)}</td>
                 <td className={`py-2.5 text-right font-mono ${s.highMargin < 0 ? "text-d-red" : "text-d-green"}`}>{fmtPercent(s.highMargin)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+    </div>
+  );
+}
+
+// --- Loan Repayment Tab ---
+function LoanTab({ inputs, result }: { inputs: FacilityInputs; result: ReturnType<typeof calculateProForma> }) {
+  const principal = result.totalCapex * (1 - inputs.equityPercentage);
+  const annualRate = inputs.loanInterestRate;
+  const termYears = inputs.loanTermYears;
+  const monthlyRate = annualRate / 12;
+  const numPayments = termYears * 12;
+
+  const schedule: {
+    month: number; payment: number; principalPortion: number;
+    interestPortion: number; balance: number;
+    cumulativeInterest: number; cumulativePrincipal: number;
+  }[] = [];
+
+  if (principal > 0 && annualRate > 0) {
+    const mp = (principal * monthlyRate * Math.pow(1 + monthlyRate, numPayments)) /
+      (Math.pow(1 + monthlyRate, numPayments) - 1);
+    let bal = principal;
+    let cumI = 0;
+    let cumP = 0;
+    for (let m = 1; m <= numPayments; m++) {
+      const intPart = bal * monthlyRate;
+      const prinPart = mp - intPart;
+      bal = Math.max(0, bal - prinPart);
+      cumI += intPart;
+      cumP += prinPart;
+      schedule.push({ month: m, payment: mp, principalPortion: prinPart, interestPortion: intPart, balance: bal, cumulativeInterest: cumI, cumulativePrincipal: cumP });
+    }
+  }
+
+  const totalInterest = schedule.length > 0 ? schedule[schedule.length - 1].cumulativeInterest : 0;
+  const totalCost = totalInterest + principal;
+  const mp = schedule.length > 0 ? schedule[0].payment : 0;
+
+  const annualSummary: { year: number; payments: number; prin: number; int: number; endBal: number }[] = [];
+  for (let y = 1; y <= termYears; y++) {
+    const ym = schedule.filter((s) => s.month > (y - 1) * 12 && s.month <= y * 12);
+    if (ym.length > 0) {
+      annualSummary.push({
+        year: y,
+        payments: ym.reduce((s, m) => s + m.payment, 0),
+        prin: ym.reduce((s, m) => s + m.principalPortion, 0),
+        int: ym.reduce((s, m) => s + m.interestPortion, 0),
+        endBal: ym[ym.length - 1].balance,
+      });
+    }
+  }
+
+  const chartData = schedule.map((s) => ({ month: s.month, principal: s.principalPortion, interest: s.interestPortion, balance: s.balance }));
+
+  if (principal <= 0) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-foreground">Loan Repayment</h2>
+        <Card>
+          <p className="text-muted text-center py-12">No debt — CAPEX is 100% equity funded. Adjust the Equity % in Financing to model a loan.</p>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-foreground">Loan Repayment Schedule</h2>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KPI label="Loan Principal" value={fmtCurrency(principal)} color="accent" />
+        <KPI label="Monthly Payment" value={fmtCurrencyFull(mp)} sub={`${fmtPercent(annualRate)} over ${termYears} years`} color="purple" />
+        <KPI label="Total Interest" value={fmtCurrency(totalInterest)} sub={`${((totalInterest / principal) * 100).toFixed(0)}% of principal`} color="red" />
+        <KPI label="Total Cost of Debt" value={fmtCurrency(totalCost)} sub={`${numPayments} payments`} color="orange" />
+      </div>
+
+      <Card>
+        <CardTitle>Remaining Balance Over Time</CardTitle>
+        <ResponsiveContainer width="100%" height={350}>
+          <AreaChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+            <XAxis dataKey="month" stroke={CHART_TEXT} tick={{ fill: CHART_TEXT, fontSize: 11 }} label={{ value: "Month", position: "bottom", offset: -5, fill: CHART_TEXT }} />
+            <YAxis stroke={CHART_TEXT} tick={{ fill: CHART_TEXT, fontSize: 11 }} tickFormatter={(v: number) => fmtCurrency(v)} />
+            <Tooltip contentStyle={tooltipStyle} formatter={fmt(fmtCurrencyFull)} />
+            <Area type="monotone" dataKey="balance" name="Remaining Balance" stroke="#2abf9c" fill="rgba(42, 191, 156, 0.15)" strokeWidth={2} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </Card>
+
+      <Card>
+        <CardTitle>Monthly Payment Split: Principal vs. Interest</CardTitle>
+        <ResponsiveContainer width="100%" height={300}>
+          <AreaChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+            <XAxis dataKey="month" stroke={CHART_TEXT} tick={{ fill: CHART_TEXT, fontSize: 11 }} />
+            <YAxis stroke={CHART_TEXT} tick={{ fill: CHART_TEXT, fontSize: 11 }} tickFormatter={(v: number) => fmtCurrency(v)} />
+            <Tooltip contentStyle={tooltipStyle} formatter={fmt(fmtCurrencyFull)} />
+            <Legend wrapperStyle={{ color: CHART_TEXT, fontSize: 12 }} />
+            <Area type="monotone" dataKey="principal" name="Principal" stackId="1" stroke="#2abf9c" fill="rgba(42, 191, 156, 0.4)" />
+            <Area type="monotone" dataKey="interest" name="Interest" stackId="1" stroke="#f43f5e" fill="rgba(244, 63, 94, 0.4)" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </Card>
+
+      <Card>
+        <CardTitle>Annual Summary</CardTitle>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-muted text-xs uppercase tracking-wider">
+              <th className="py-2 text-left">Year</th>
+              <th className="py-2 text-right">Total Payments</th>
+              <th className="py-2 text-right">Principal</th>
+              <th className="py-2 text-right">Interest</th>
+              <th className="py-2 text-right">Ending Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {annualSummary.map((row) => (
+              <tr key={row.year} className="border-b border-border/50 hover:bg-card-hover transition-colors">
+                <td className="py-2.5 text-foreground">{row.year}</td>
+                <td className="py-2.5 text-right font-mono text-foreground">{fmtCurrencyFull(row.payments)}</td>
+                <td className="py-2.5 text-right font-mono text-d-green">{fmtCurrencyFull(row.prin)}</td>
+                <td className="py-2.5 text-right font-mono text-d-red">{fmtCurrencyFull(row.int)}</td>
+                <td className="py-2.5 text-right font-mono text-foreground">{fmtCurrencyFull(row.endBal)}</td>
+              </tr>
+            ))}
+            <tr className="font-bold border-t-2 border-accent/30">
+              <td className="py-2.5 text-accent">Total</td>
+              <td className="py-2.5 text-right font-mono text-accent">{fmtCurrencyFull(totalCost)}</td>
+              <td className="py-2.5 text-right font-mono text-d-green">{fmtCurrencyFull(principal)}</td>
+              <td className="py-2.5 text-right font-mono text-d-red">{fmtCurrencyFull(totalInterest)}</td>
+              <td className="py-2.5 text-right font-mono text-accent">$0</td>
+            </tr>
+          </tbody>
+        </table>
+      </Card>
+
+      <Card className="overflow-x-auto">
+        <CardTitle>Monthly Amortization</CardTitle>
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-border text-muted uppercase tracking-wider">
+              <th className="py-2 text-left">Mo</th>
+              <th className="py-2 text-right">Payment</th>
+              <th className="py-2 text-right">Principal</th>
+              <th className="py-2 text-right">Interest</th>
+              <th className="py-2 text-right">Balance</th>
+              <th className="py-2 text-right">Cum. Interest</th>
+            </tr>
+          </thead>
+          <tbody>
+            {schedule.map((row) => (
+              <tr key={row.month} className="border-b border-border/30 hover:bg-card-hover transition-colors">
+                <td className="py-1.5 text-foreground">{row.month}</td>
+                <td className="py-1.5 text-right font-mono text-foreground">{fmtCurrencyFull(row.payment)}</td>
+                <td className="py-1.5 text-right font-mono text-d-green">{fmtCurrencyFull(row.principalPortion)}</td>
+                <td className="py-1.5 text-right font-mono text-d-red">{fmtCurrencyFull(row.interestPortion)}</td>
+                <td className="py-1.5 text-right font-mono text-foreground">{fmtCurrencyFull(row.balance)}</td>
+                <td className="py-1.5 text-right font-mono text-muted">{fmtCurrencyFull(row.cumulativeInterest)}</td>
               </tr>
             ))}
           </tbody>

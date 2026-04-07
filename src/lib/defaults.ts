@@ -51,7 +51,7 @@ export const defaultInputs: FacilityInputs = {
 
   // Revenue
   tippingFeePerLb: 0.10,
-  compostPricePerCY: 35,
+  compostPricePerCY: 10,
   compostShrinkage: 0.40, // 40% volume loss during composting
   compostDensityLbsPerCY: 800, // finished compost density
 
@@ -65,7 +65,7 @@ export const defaultInputs: FacilityInputs = {
   // Ramp & Growth
   rampMonths: 12,
   startingTonnage: 15, // tons/day starting
-  annualTonnageGrowth: 0.65, // 65% annual growth in tonnage
+  annualTonnageGrowth: 3.00, // 300% annual growth in tonnage
   maxTonsPerDay: 100, // hard cap
   startingUtilization: 0.15, // legacy
 

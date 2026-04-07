@@ -33,7 +33,6 @@ export const defaultInputs: FacilityInputs = {
   numEmployees: 10,
   hourlyRate: 30, // $/hr
   payrollTaxRate: 0.20,
-  machineCogsPerUnit: 1200,
   utilities: 3500,
   insurancePermits: 2000,
   equipmentMaintenance: 2300,
@@ -122,7 +121,6 @@ export const inputConfigs: InputConfig[] = [
   { key: "hourlyRate", label: "Hourly Rate ($/hr)", min: 15, max: 60, step: 1, format: "currency", group: "Monthly Operating Costs" },
   { key: "payrollTaxRate", label: "Payroll Tax Rate", min: 0.10, max: 0.35, step: 0.01, format: "percent", group: "Monthly Operating Costs" },
   { key: "laborEscalatorRate", label: "Annual Labor Escalator", min: 0, max: 0.10, step: 0.005, format: "percent", group: "Monthly Operating Costs" },
-  { key: "machineCogsPerUnit", label: "Machine COGS (per unit/mo)", min: 500, max: 3000, step: 100, format: "currency", group: "Monthly Operating Costs" },
   { key: "utilities", label: "Utilities", min: 1000, max: 15000, step: 500, format: "currency", group: "Monthly Operating Costs" },
   { key: "insurancePermits", label: "Insurance & Permits", min: 500, max: 10000, step: 250, format: "currency", group: "Monthly Operating Costs" },
   { key: "equipmentMaintenance", label: "Equipment Maintenance", min: 500, max: 10000, step: 250, format: "currency", group: "Monthly Operating Costs" },

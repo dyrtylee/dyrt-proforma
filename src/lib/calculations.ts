@@ -74,7 +74,6 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
   const monthlyHoursPerEmployee = (40 * 52) / 12;
   const baseLaborCost = inputs.numEmployees * inputs.hourlyRate * monthlyHoursPerEmployee;
   const totalLabor = baseLaborCost * (1 + inputs.payrollTaxRate);
-  const machineCogs = inputs.numComposters * inputs.machineCogsPerUnit;
   const truckOpex = inputs.numTrucks * (
     inputs.truckFuelPerMonth +
     inputs.truckMaintenancePerMonth +
@@ -87,7 +86,7 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
     inputs.suppliesConsumables +
     inputs.adminITDisposal;
 
-  const monthlyFixedCosts = totalLabor + machineCogs + inputs.facilityLease + truckOpex + otherFixed;
+  const monthlyFixedCosts = totalLabor + inputs.facilityLease + truckOpex + otherFixed;
 
   // --- PROJECTIONS ---
   const projections: MonthlyProjection[] = [];
@@ -140,11 +139,11 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
     const totalRevenue = tippingRevenue + compostRevenue;
 
     // Costs (with escalated labor)
-    const monthFixedCosts = escalatedLabor + machineCogs + inputs.facilityLease + truckOpex + otherFixed;
+    const monthFixedCosts = escalatedLabor + inputs.facilityLease + truckOpex + otherFixed;
     const totalOpex = monthFixedCosts + sawdustCost + shippingCost + digesterDisposalCost + digesterHaulingCost;
 
     // Profitability
-    const grossProfit = totalRevenue - sawdustCost - shippingCost - machineCogs;
+    const grossProfit = totalRevenue - sawdustCost - shippingCost - digesterDisposalCost - digesterHaulingCost;
     const grossMargin = totalRevenue > 0 ? grossProfit / totalRevenue : 0;
     const netProfit = totalRevenue - totalOpex - monthlyDebtService;
     const netMargin = totalRevenue > 0 ? netProfit / totalRevenue : 0;
@@ -172,7 +171,7 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
       shippingCost,
       totalRevenue,
       laborCost: escalatedLabor,
-      machineCogs,
+      machineCogs: 0,
       sawdustCost,
       facilityCost: inputs.facilityLease,
       truckCost: truckOpex,
@@ -211,9 +210,7 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
   const revenuePerTon = (fullMonthlyLbs * inputs.tippingFeePerLb + fullCompostCY * inputs.compostPricePerCY) / fullMonthlyTons;
   const contributionMarginPerTon = revenuePerTon - variableCostPerTon;
 
-  const fixedCosts = monthlyFixedCosts + monthlyDebtService - (fullSawdustCost + fullShippingCost);
-  // Recalculate: fixed = totalLabor + machineCogs + lease + truckOpex + otherFixed + debtService
-  const trueFixedCosts = totalLabor + machineCogs + inputs.facilityLease + truckOpex + otherFixed + monthlyDebtService;
+  const trueFixedCosts = totalLabor + inputs.facilityLease + truckOpex + otherFixed + monthlyDebtService;
 
   // Break-even tons/month = fixedCosts / contributionMarginPerTon
   // Then convert to tons/day

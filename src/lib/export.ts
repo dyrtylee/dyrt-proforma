@@ -96,10 +96,9 @@ export function exportToExcel(inputs: FacilityInputs, result: ProFormaResult) {
   const totalRev = proj.map((p) => p.totalRevenue);
 
   const sawdustCost = proj.map((p) => -p.sawdustCost);
-  const machCogs = proj.map((p) => -p.machineCogs);
   const digesterCost = proj.map((p) => -(p.digesterDisposalCost + p.digesterHaulingCost));
   const shippingCost = proj.map((p) => -p.shippingCost);
-  const totalCogs = proj.map((_, i) => sawdustCost[i] + machCogs[i] + digesterCost[i] + shippingCost[i]);
+  const totalCogs = proj.map((_, i) => sawdustCost[i] + digesterCost[i] + shippingCost[i]);
   const grossProfit = proj.map((_, i) => totalRev[i] + totalCogs[i]);
 
   const laborExp = proj.map((p) => -p.laborCost);
@@ -125,7 +124,6 @@ export function exportToExcel(inputs: FacilityInputs, result: ProFormaResult) {
     isBlank(),
     isBold("Cost of Goods Sold", []),
     isRow("Sawdust / Carbon", sawdustCost, 1),
-    isRow("Machine COGS", machCogs, 1),
     isRow("Digester Disposal & Hauling", digesterCost, 1),
     isRow("Compost Shipping", shippingCost, 1),
     isBold("Total COGS", totalCogs),

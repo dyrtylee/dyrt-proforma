@@ -31,7 +31,6 @@ export interface FacilityInputs {
   numEmployees: number;
   hourlyRate: number; // $/hr
   payrollTaxRate: number; // percentage (0-1)
-  machineCogsPerUnit: number; // monthly per composter
   utilities: number;
   insurancePermits: number;
   equipmentMaintenance: number;

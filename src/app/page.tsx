@@ -455,7 +455,6 @@ function OperationsTab({ result, inputs }: { result: ReturnType<typeof calculate
                     <Pie
                       data={[
                         { name: "Labor", value: steadyMonth.laborCost },
-                        { name: "Machine COGS", value: steadyMonth.machineCogs },
                         { name: "Facility Lease", value: steadyMonth.facilityCost },
                         { name: "Sawdust", value: steadyMonth.sawdustCost },
                         { name: "Truck Ops", value: steadyMonth.truckCost },
@@ -485,7 +484,6 @@ function OperationsTab({ result, inputs }: { result: ReturnType<typeof calculate
                   <tbody>
                     {[
                       ["Labor (incl. payroll tax)", steadyMonth.laborCost],
-                      ["Machine COGS", steadyMonth.machineCogs],
                       ["Facility Lease", steadyMonth.facilityCost],
                       ["Sawdust / Carbon", steadyMonth.sawdustCost],
                       ["Truck Operations", steadyMonth.truckCost],

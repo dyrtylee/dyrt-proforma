@@ -40,7 +40,6 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
   const capexBreakdown: Record<string, number> = {
     "Composters": compostersTotal,
     "Dewaterer": inputs.dewatererCost,
-    "Digester": inputs.digesterCost,
     "Wet Conveyor": inputs.conveyorCost,
     "Depackager": inputs.depackagerCost,
     "Trommel Screen": inputs.trommelCost,
@@ -124,7 +123,13 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
     const rawCompostLbs = (dewateredLbs + sawdustNeededLbs) * (1 - inputs.compostShrinkage);
     const compostCY = rawCompostLbs / inputs.compostDensityLbsPerCY;
 
-    // Shipping
+    // Digester liquid disposal (sludge from dewaterer)
+    const sludgeGallons = sludgeToDigesterLbs / inputs.liquidDensityLbsPerGallon;
+    const digesterDisposalCost = sludgeGallons * inputs.digesterDisposalPerGallon;
+    const digesterTruckloads = Math.ceil(sludgeGallons / inputs.digesterTruckCapacityGallons);
+    const digesterHaulingCost = digesterTruckloads * inputs.digesterTruckloadCost;
+
+    // Shipping (compost out)
     const compostTons = rawCompostLbs / 2000;
     const truckloadsCompost = Math.ceil(compostTons / inputs.trailerCapacityTons);
     const shippingCost = truckloadsCompost * inputs.shippingCostPerLoad;
@@ -136,7 +141,7 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
 
     // Costs (with escalated labor)
     const monthFixedCosts = escalatedLabor + machineCogs + inputs.facilityLease + truckOpex + otherFixed;
-    const totalOpex = monthFixedCosts + sawdustCost + shippingCost;
+    const totalOpex = monthFixedCosts + sawdustCost + shippingCost + digesterDisposalCost + digesterHaulingCost;
 
     // Profitability
     const grossProfit = totalRevenue - sawdustCost - shippingCost - machineCogs;
@@ -158,6 +163,10 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
       compostProducedLbs: rawCompostLbs,
       compostProducedCY: compostCY,
       truckloadsCompost,
+      sludgeGallons,
+      digesterDisposalCost,
+      digesterHaulingCost,
+      digesterTruckloads,
       tippingRevenue,
       compostRevenue,
       shippingCost,
@@ -190,7 +199,14 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
   const fullShippingCost = fullTruckloads * inputs.shippingCostPerLoad;
   const fullMonthlyTons = fullMonthlyLbs / 2000;
 
-  const variableCostPerTon = (fullSawdustCost + fullShippingCost) / fullMonthlyTons;
+  // Digester disposal at full capacity
+  const fullSludgeLbs = fullMonthlyLbs * inputs.dewateringReduction;
+  const fullSludgeGallons = fullSludgeLbs / inputs.liquidDensityLbsPerGallon;
+  const fullDigesterDisposal = fullSludgeGallons * inputs.digesterDisposalPerGallon;
+  const fullDigesterTruckloads = Math.ceil(fullSludgeGallons / inputs.digesterTruckCapacityGallons);
+  const fullDigesterHauling = fullDigesterTruckloads * inputs.digesterTruckloadCost;
+
+  const variableCostPerTon = (fullSawdustCost + fullShippingCost + fullDigesterDisposal + fullDigesterHauling) / fullMonthlyTons;
   const fullCompostCY = fullCompostLbs / inputs.compostDensityLbsPerCY;
   const revenuePerTon = (fullMonthlyLbs * inputs.tippingFeePerLb + fullCompostCY * inputs.compostPricePerCY) / fullMonthlyTons;
   const contributionMarginPerTon = revenuePerTon - variableCostPerTon;

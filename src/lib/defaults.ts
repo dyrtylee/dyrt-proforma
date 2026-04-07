@@ -7,7 +7,6 @@ export const defaultInputs: FacilityInputs = {
   composterCapacityLbs: 2500, // lbs raw food waste per composter per day
   dewatererCost: 150000,
   dewateringReduction: 0.80, // 80% weight reduction
-  digesterCost: 200000,
   conveyorCost: 65000,
   depackagerCost: 175000,
   trommelCost: 35000,
@@ -43,6 +42,12 @@ export const defaultInputs: FacilityInputs = {
   truckFuelPerMonth: 600,
   truckMaintenancePerMonth: 500,
   truckInsurancePerMonth: 648, // $7,778/yr per BHHC policy
+
+  // Digester Liquid Disposal
+  digesterDisposalPerGallon: 0.01,
+  digesterTruckloadCost: 800,
+  digesterTruckCapacityGallons: 5000, // ~5,000 gallon tanker
+  liquidDensityLbsPerGallon: 8.34, // water-like density
 
   // Revenue
   tippingFeePerLb: 0.10,
@@ -89,7 +94,6 @@ export const inputConfigs: InputConfig[] = [
   { key: "composterCapacityLbs", label: "Composter Capacity (lbs/day)", min: 500, max: 5000, step: 100, format: "number", group: "Equipment CAPEX" },
   { key: "dewatererCost", label: "Dewaterer Cost", min: 50000, max: 500000, step: 10000, format: "currency-large", group: "Equipment CAPEX" },
   { key: "dewateringReduction", label: "Dewatering Weight Reduction", min: 0.50, max: 0.95, step: 0.05, format: "percent", group: "Equipment CAPEX" },
-  { key: "digesterCost", label: "Digester Cost", min: 50000, max: 1000000, step: 25000, format: "currency-large", group: "Equipment CAPEX" },
   { key: "conveyorCost", label: "Wet Conveyor System", min: 20000, max: 200000, step: 5000, format: "currency-large", group: "Equipment CAPEX" },
   { key: "depackagerCost", label: "Depackager", min: 50000, max: 500000, step: 10000, format: "currency-large", group: "Equipment CAPEX" },
   { key: "trommelCost", label: "Trommel Screen", min: 10000, max: 100000, step: 5000, format: "currency-large", group: "Equipment CAPEX" },
@@ -127,6 +131,12 @@ export const inputConfigs: InputConfig[] = [
   { key: "truckMaintenancePerMonth", label: "Truck Maint (per truck/mo)", min: 200, max: 3000, step: 100, format: "currency", group: "Monthly Operating Costs" },
   { key: "truckInsurancePerMonth", label: "Truck Ins (per truck/mo)", min: 100, max: 1200, step: 25, format: "currency", group: "Monthly Operating Costs" },
 
+  // Digester Liquid Disposal
+  { key: "digesterDisposalPerGallon", label: "Disposal Cost ($/gal)", min: 0.005, max: 0.05, step: 0.005, format: "currency", group: "Digester Liquid Disposal" },
+  { key: "digesterTruckloadCost", label: "Hauling Cost ($/truckload)", min: 200, max: 2000, step: 50, format: "currency", group: "Digester Liquid Disposal" },
+  { key: "digesterTruckCapacityGallons", label: "Tanker Capacity (gal)", min: 2000, max: 10000, step: 500, format: "number", group: "Digester Liquid Disposal" },
+  { key: "liquidDensityLbsPerGallon", label: "Liquid Density (lbs/gal)", min: 7.0, max: 10.0, step: 0.1, format: "number", group: "Digester Liquid Disposal" },
+
   // Revenue
   { key: "tippingFeePerLb", label: "Tipping Fee (per lb)", min: 0.03, max: 0.25, step: 0.005, format: "currency", group: "Revenue" },
   { key: "compostPricePerCY", label: "Compost Sale Price (per CY)", min: 10, max: 80, step: 5, format: "currency", group: "Revenue" },
@@ -149,6 +159,7 @@ export const inputConfigs: InputConfig[] = [
 export const groupOrder = [
   "Revenue",
   "Monthly Operating Costs",
+  "Digester Liquid Disposal",
   "Equipment CAPEX",
   "Facility CAPEX",
   "Carbon & Amendments",

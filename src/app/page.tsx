@@ -484,7 +484,7 @@ function OperationsTab({ result, inputs }: { result: ReturnType<typeof calculate
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <KPI label="Daily Intake" value={fmtTons(steadyMonth.dailyTonsIn)} sub={`${fmtNumber(steadyMonth.dailyTonsIn * 2000)} lbs/day`} color="accent" />
-            <KPI label="Sludge to Digester" value={`${fmtNumber(steadyMonth.sludgeToDigesterLbs / 26)} lbs/day`} sub={fmtPercent(inputs.dewateringReduction) + " of input"} color="orange" />
+            <KPI label="Liquid to Digester" value={`${fmtNumber(steadyMonth.sludgeGallons / 26)} gal/day`} sub={`${steadyMonth.digesterTruckloads} tanker loads/mo | ${fmtCurrencyFull(steadyMonth.digesterDisposalCost + steadyMonth.digesterHaulingCost)}/mo`} color="orange" />
             <KPI label="Sawdust / Month" value={`${steadyMonth.sawdustNeededCY.toFixed(0)} CY`} sub={fmtCurrencyFull(steadyMonth.sawdustCost) + "/mo"} color="purple" />
             <KPI label="Compost Out" value={`${steadyMonth.compostProducedCY.toFixed(0)} CY/mo`} sub={`${steadyMonth.truckloadsCompost} truckloads`} color="green" />
           </div>
@@ -516,6 +516,7 @@ function OperationsTab({ result, inputs }: { result: ReturnType<typeof calculate
                         { name: "Sawdust", value: steadyMonth.sawdustCost },
                         { name: "Truck Ops", value: steadyMonth.truckCost },
                         { name: "Shipping", value: steadyMonth.shippingCost },
+                        { name: "Digester", value: steadyMonth.digesterDisposalCost + steadyMonth.digesterHaulingCost },
                         { name: "Other", value: steadyMonth.otherOpex },
                       ]}
                       cx="50%"
@@ -527,7 +528,7 @@ function OperationsTab({ result, inputs }: { result: ReturnType<typeof calculate
                       strokeWidth={2}
                       paddingAngle={2}
                     >
-                      {COLORS.slice(0, 7).map((c, i) => (
+                      {COLORS.slice(0, 8).map((c, i) => (
                         <Cell key={i} fill={c} />
                       ))}
                     </Pie>
@@ -545,6 +546,8 @@ function OperationsTab({ result, inputs }: { result: ReturnType<typeof calculate
                       ["Sawdust / Carbon", steadyMonth.sawdustCost],
                       ["Truck Operations", steadyMonth.truckCost],
                       ["Compost Shipping", steadyMonth.shippingCost],
+                      ["Digester Disposal", steadyMonth.digesterDisposalCost],
+                      ["Digester Hauling", steadyMonth.digesterHaulingCost],
                       ["Other OpEx", steadyMonth.otherOpex],
                       ["Debt Service", steadyMonth.debtService],
                     ].map(([label, val]) => (
@@ -571,7 +574,7 @@ function OperationsTab({ result, inputs }: { result: ReturnType<typeof calculate
               <FlowBox label="Dewaterer" value={`${fmtPercent(inputs.dewateringReduction)} reduction`} color="orange" />
               <Arrow />
               <div className="flex flex-col gap-2">
-                <FlowBox label="Sludge to Digester" value={`${fmtNumber(steadyMonth.sludgeToDigesterLbs / 26)} lbs/day`} color="red" />
+                <FlowBox label="Liquid to Digester" value={`${fmtNumber(steadyMonth.sludgeGallons / 26)} gal/day | ${steadyMonth.digesterTruckloads} tankers/mo`} color="red" />
                 <FlowBox label="Dewatered Solids" value={`${fmtNumber(steadyMonth.dewateredLbs / 26)} lbs/day`} color="green" />
               </div>
               <Arrow />

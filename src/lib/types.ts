@@ -5,7 +5,6 @@ export interface FacilityInputs {
   composterCapacityLbs: number; // lbs of raw food waste per composter per day
   dewatererCost: number;
   dewateringReduction: number; // percentage (0-1), e.g. 0.80 = 80% weight reduction
-  digesterCost: number;
   conveyorCost: number;
   depackagerCost: number;
   trommelCost: number;
@@ -41,6 +40,12 @@ export interface FacilityInputs {
   truckFuelPerMonth: number;
   truckMaintenancePerMonth: number;
   truckInsurancePerMonth: number;
+
+  // Digester Liquid Disposal (variable)
+  digesterDisposalPerGallon: number; // $/gallon
+  digesterTruckloadCost: number; // $/truckload for hauling
+  digesterTruckCapacityGallons: number; // gallons per truckload
+  liquidDensityLbsPerGallon: number; // lbs per gallon of sludge liquid
 
   // Revenue
   tippingFeePerLb: number;
@@ -83,6 +88,12 @@ export interface MonthlyProjection {
   compostProducedLbs: number;
   compostProducedCY: number;
   truckloadsCompost: number;
+
+  // Digester liquid
+  sludgeGallons: number;
+  digesterDisposalCost: number;
+  digesterHaulingCost: number;
+  digesterTruckloads: number;
 
   // Revenue
   tippingRevenue: number;

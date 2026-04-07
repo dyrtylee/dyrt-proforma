@@ -42,7 +42,7 @@ export const defaultInputs: FacilityInputs = {
   adminITDisposal: 1800,
   truckFuelPerMonth: 600,
   truckMaintenancePerMonth: 500,
-  truckInsurancePerMonth: 165,
+  truckInsurancePerMonth: 648, // $7,778/yr per BHHC policy
 
   // Revenue
   tippingFeePerLb: 0.10,
@@ -119,7 +119,7 @@ export const inputConfigs: InputConfig[] = [
   { key: "adminITDisposal", label: "Admin / IT / Disposal", min: 500, max: 10000, step: 250, format: "currency", group: "Monthly Operating Costs" },
   { key: "truckFuelPerMonth", label: "Truck Fuel (per truck/mo)", min: 200, max: 2000, step: 50, format: "currency", group: "Monthly Operating Costs" },
   { key: "truckMaintenancePerMonth", label: "Truck Maint (per truck/mo)", min: 200, max: 3000, step: 100, format: "currency", group: "Monthly Operating Costs" },
-  { key: "truckInsurancePerMonth", label: "Truck Ins (per truck/mo)", min: 50, max: 500, step: 25, format: "currency", group: "Monthly Operating Costs" },
+  { key: "truckInsurancePerMonth", label: "Truck Ins (per truck/mo)", min: 100, max: 1200, step: 25, format: "currency", group: "Monthly Operating Costs" },
 
   // Revenue
   { key: "tippingFeePerLb", label: "Tipping Fee (per lb)", min: 0.03, max: 0.25, step: 0.005, format: "currency", group: "Revenue" },

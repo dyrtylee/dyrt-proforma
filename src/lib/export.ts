@@ -1,60 +1,67 @@
 import * as XLSX from "xlsx";
-import { FacilityInputs, ProFormaResult } from "./types";
-import { inputConfigs } from "./defaults";
+import { FacilityInputs, ProFormaResult, MonthlyProjection } from "./types";
+import { inputConfigs, groupOrder } from "./defaults";
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+type Row = (string | number | null)[];
+type CellStyle = { numFmt?: string; bold?: boolean };
+
+/** Sum a field across a slice of projections */
+function sumSlice(proj: MonthlyProjection[], start: number, end: number, fn: (p: MonthlyProjection) => number): number {
+  return proj.slice(start, end).reduce((s, p) => s + fn(p), 0);
+}
+
+/** Last value in a slice */
+function lastInSlice(proj: MonthlyProjection[], start: number, end: number, fn: (p: MonthlyProjection) => number): number {
+  const slice = proj.slice(start, end);
+  return slice.length > 0 ? fn(slice[slice.length - 1]) : 0;
+}
+
+/** Build annual period ranges: Year 1 = months 1-12, Year 2 = 13-24, etc. */
+function getAnnualPeriods(totalMonths: number): { label: string; start: number; end: number }[] {
+  const periods: { label: string; start: number; end: number }[] = [];
+  for (let y = 0; y * 12 < totalMonths; y++) {
+    const start = y * 12;
+    const end = Math.min((y + 1) * 12, totalMonths);
+    periods.push({ label: `Year ${y + 1}`, start, end });
+  }
+  return periods;
+}
+
+/** Apply number formats and bold to a worksheet */
+function applyFormats(ws: XLSX.WorkSheet, formats: Map<string, CellStyle>) {
+  for (const [ref, style] of formats) {
+    if (!ws[ref]) continue;
+    if (!ws[ref].s) ws[ref].s = {};
+    if (style.numFmt) ws[ref].z = style.numFmt;
+  }
+}
+
+/** Set column widths */
+function setCols(ws: XLSX.WorkSheet, labelWidth: number, dataCols: number, dataWidth = 16) {
+  ws["!cols"] = [{ wch: labelWidth }, ...Array(dataCols).fill({ wch: dataWidth })];
+}
+
+// ── Main Export ─────────────────────────────────────────────────────────────
 
 export function exportToExcel(inputs: FacilityInputs, result: ProFormaResult) {
   const wb = XLSX.utils.book_new();
-
-  // ── Sheet 1: Assumptions ──────────────────────────────────────────────
-  const assumptionRows: (string | number)[][] = [
-    ["DYRT LABS — FACILITY PRO FORMA"],
-    [`Generated: ${new Date().toLocaleDateString()}`],
-    [],
-    ["ASSUMPTIONS"],
-    [],
-  ];
-
-  let lastGroup = "";
-  for (const config of inputConfigs) {
-    if (config.group !== lastGroup) {
-      assumptionRows.push([]);
-      assumptionRows.push([config.group.toUpperCase()]);
-      lastGroup = config.group;
-    }
-    const val = inputs[config.key] as number;
-    const display =
-      config.format === "percent" ? val : val;
-    const unit =
-      config.format === "percent" ? "%" :
-      config.format === "currency" || config.format === "currency-large" ? "$" : "";
-    assumptionRows.push([config.label, display, unit]);
-  }
-
-  assumptionRows.push([], ["CAPEX BREAKDOWN"]);
-  for (const [name, value] of Object.entries(result.capexBreakdown)) {
-    assumptionRows.push([name, value]);
-  }
-  assumptionRows.push(["Total CAPEX", result.totalCapex]);
-
-  const wsAssumptions = XLSX.utils.aoa_to_sheet(assumptionRows);
-  wsAssumptions["!cols"] = [{ wch: 35 }, { wch: 18 }, { wch: 6 }];
-  XLSX.utils.book_append_sheet(wb, wsAssumptions, "Assumptions");
-
-  // ── Projection data ───────────────────────────────────────────────────
   const proj = result.monthlyProjections;
-  const months = proj.map((p) => `Month ${p.month}`);
+  const periods = getAnnualPeriods(inputs.projectionMonths);
+  const headers = ["", ...periods.map((p) => p.label)];
+  const numYears = periods.length;
 
-  // Loan amortization for interest/principal split
+  // ── Loan amortization ───────────────────────────────────────────────────
   const principal = result.totalCapex * (1 - inputs.equityPercentage);
   const annualRate = inputs.loanInterestRate;
   const termYears = inputs.loanTermYears;
   const monthlyRate = annualRate / 12;
   const numPayments = termYears * 12;
-  let monthlyPayment = 0;
   const loanSchedule: { interest: number; principalPay: number; balance: number }[] = [];
 
   if (principal > 0 && annualRate > 0) {
-    monthlyPayment = (principal * monthlyRate * Math.pow(1 + monthlyRate, numPayments)) /
+    const mp = (principal * monthlyRate * Math.pow(1 + monthlyRate, numPayments)) /
       (Math.pow(1 + monthlyRate, numPayments) - 1);
     let bal = principal;
     for (let m = 0; m < Math.max(numPayments, inputs.projectionMonths); m++) {
@@ -62,7 +69,7 @@ export function exportToExcel(inputs: FacilityInputs, result: ProFormaResult) {
         loanSchedule.push({ interest: 0, principalPay: 0, balance: 0 });
       } else {
         const intPart = bal * monthlyRate;
-        const prinPart = Math.min(monthlyPayment - intPart, bal);
+        const prinPart = Math.min(mp - intPart, bal);
         bal = Math.max(0, bal - prinPart);
         loanSchedule.push({ interest: intPart, principalPay: prinPart, balance: bal });
       }
@@ -73,186 +80,306 @@ export function exportToExcel(inputs: FacilityInputs, result: ProFormaResult) {
     }
   }
 
-  // Depreciation: straight-line over 7 years
-  const depreciationYears = 7;
-  const monthlyDepreciation = result.totalCapex / (depreciationYears * 12);
+  const depYears = 7;
+  const monthlyDep = result.totalCapex / (depYears * 12);
+  const equityInvested = result.totalCapex * inputs.equityPercentage;
 
-  // ── Sheet 2: Income Statement ─────────────────────────────────────────
-  function isRow(label: string, values: number[], indent = 0): (string | number)[] {
-    const prefix = "  ".repeat(indent);
-    return [prefix + label, ...values.map((v) => Math.round(v))];
+  // ── Annual aggregation helper ─────────────────────────────────────────
+  function annualRow(label: string, fn: (p: MonthlyProjection, i: number) => number, indent = false): Row {
+    const prefix = indent ? "   " : "";
+    return [prefix + label, ...periods.map((per) => {
+      let total = 0;
+      for (let m = per.start; m < per.end; m++) {
+        total += fn(proj[m], m);
+      }
+      return Math.round(total);
+    })];
   }
 
-  function isBlank(): (string | number)[] {
-    return [""];
+  function annualEndBalance(label: string, fn: (p: MonthlyProjection, i: number) => number, indent = false): Row {
+    const prefix = indent ? "   " : "";
+    return [prefix + label, ...periods.map((per) => Math.round(fn(proj[per.end - 1], per.end - 1)))];
   }
 
-  function isBold(label: string, values: number[]): (string | number)[] {
-    return [label, ...values.map((v) => Math.round(v))];
+  function blankRow(): Row { return [""]; }
+
+  function pctRow(label: string, numFn: (p: MonthlyProjection, i: number) => number, denFn: (p: MonthlyProjection, i: number) => number): Row {
+    return [label, ...periods.map((per) => {
+      let num = 0, den = 0;
+      for (let m = per.start; m < per.end; m++) {
+        num += numFn(proj[m], m);
+        den += denFn(proj[m], m);
+      }
+      return den !== 0 ? `${((num / den) * 100).toFixed(1)}%` : "—";
+    })];
   }
 
-  const tippingRev = proj.map((p) => p.tippingRevenue);
-  const compostRev = proj.map((p) => p.compostRevenue);
-  const totalRev = proj.map((p) => p.totalRevenue);
+  // Pre-compute monthly arrays for non-projection data
+  const monthlyInterest = proj.map((_, i) => loanSchedule[i]?.interest ?? 0);
+  const monthlyPrincipalPay = proj.map((_, i) => loanSchedule[i]?.principalPay ?? 0);
+  const monthlyNetIncome = proj.map((p, i) => {
+    const grossP = p.totalRevenue - p.sawdustCost - p.shippingCost - p.digesterDisposalCost - p.digesterHaulingCost;
+    const opex = p.laborCost + p.facilityCost + p.truckCost + p.otherOpex;
+    const ebitda = grossP - opex;
+    return ebitda - monthlyDep - monthlyInterest[i];
+  });
 
-  const sawdustCost = proj.map((p) => -p.sawdustCost);
-  const digesterCost = proj.map((p) => -(p.digesterDisposalCost + p.digesterHaulingCost));
-  const shippingCost = proj.map((p) => -p.shippingCost);
-  const totalCogs = proj.map((_, i) => sawdustCost[i] + digesterCost[i] + shippingCost[i]);
-  const grossProfit = proj.map((_, i) => totalRev[i] + totalCogs[i]);
+  // ════════════════════════════════════════════════════════════════════════
+  // SHEET 1: ASSUMPTIONS
+  // ════════════════════════════════════════════════════════════════════════
+  const aRows: Row[] = [
+    ["DYRT LABS, INC."],
+    ["Facility Pro Forma — Key Assumptions"],
+    [`Prepared: ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`],
+    [],
+    ["Assumption", "Value", "Unit"],
+  ];
 
-  const laborExp = proj.map((p) => -p.laborCost);
-  const rentExp = proj.map((p) => -p.facilityCost);
-  const truckExp = proj.map((p) => -p.truckCost);
-  const otherExp = proj.map((p) => -p.otherOpex);
-  const totalOpex = proj.map((_, i) => laborExp[i] + rentExp[i] + truckExp[i] + otherExp[i]);
-  const ebitda = proj.map((_, i) => grossProfit[i] + totalOpex[i]);
+  for (const group of groupOrder) {
+    const configs = inputConfigs.filter((c) => c.group === group);
+    if (configs.length === 0) continue;
+    aRows.push([]);
+    aRows.push([group.toUpperCase()]);
+    for (const c of configs) {
+      const val = inputs[c.key] as number;
+      if (c.format === "percent") {
+        aRows.push([c.label, `${(val * 100).toFixed(1)}%`, ""]);
+      } else if (c.format === "currency" || c.format === "currency-large") {
+        aRows.push([c.label, val, "$"]);
+      } else {
+        aRows.push([c.label, val, ""]);
+      }
+    }
+  }
 
-  const depExp = proj.map(() => -monthlyDepreciation);
-  const intExp = proj.map((_, i) => -(loanSchedule[i]?.interest ?? 0));
-  const ebt = proj.map((_, i) => ebitda[i] + depExp[i] + intExp[i]);
-  // No tax for simplicity (pre-revenue startup)
-  const netIncome = ebt;
+  aRows.push([], [], ["USES OF FUNDS"], ["Item", "Amount"]);
+  for (const [name, value] of Object.entries(result.capexBreakdown)) {
+    aRows.push([`   ${name}`, value]);
+  }
+  aRows.push(["Total Capital Expenditures", result.totalCapex]);
 
-  const isRows = [
-    ["INCOME STATEMENT", ...months],
-    isBlank(),
-    isBold("Revenue", []),
-    isRow("Tipping Fees", tippingRev, 1),
-    isRow("Compost Sales", compostRev, 1),
-    isBold("Total Revenue", totalRev),
-    isBlank(),
-    isBold("Cost of Goods Sold", []),
-    isRow("Sawdust / Carbon", sawdustCost, 1),
-    isRow("Digester Disposal & Hauling", digesterCost, 1),
-    isRow("Compost Shipping", shippingCost, 1),
-    isBold("Total COGS", totalCogs),
-    isBlank(),
-    isBold("Gross Profit", grossProfit),
-    isRow("Gross Margin %", proj.map((_, i) => totalRev[i] !== 0 ? (grossProfit[i] / totalRev[i]) * 100 : 0)),
-    isBlank(),
-    isBold("Operating Expenses", []),
-    isRow("Labor (incl. payroll tax)", laborExp, 1),
-    isRow("Facility Rent", rentExp, 1),
-    isRow("Fleet Operations", truckExp, 1),
-    isRow("Other (utilities, ins, maint, supplies, admin)", otherExp, 1),
-    isBold("Total Operating Expenses", totalOpex),
-    isBlank(),
-    isBold("EBITDA", ebitda),
-    isRow("EBITDA Margin %", proj.map((_, i) => totalRev[i] !== 0 ? (ebitda[i] / totalRev[i]) * 100 : 0)),
-    isBlank(),
-    isRow("Depreciation", depExp, 1),
-    isRow("Interest Expense", intExp, 1),
-    isBlank(),
-    isBold("Net Income", netIncome),
-    isRow("Net Margin %", proj.map((_, i) => totalRev[i] !== 0 ? (netIncome[i] / totalRev[i]) * 100 : 0)),
+  aRows.push([], ["SOURCES OF FUNDS"], ["Source", "Amount"]);
+  aRows.push([`   Owner Equity (${(inputs.equityPercentage * 100).toFixed(0)}%)`, equityInvested]);
+  aRows.push([`   Term Loan (${((1 - inputs.equityPercentage) * 100).toFixed(0)}%)`, principal]);
+  aRows.push(["Total Sources", result.totalCapex]);
+
+  if (principal > 0) {
+    aRows.push([], ["DEBT TERMS"]);
+    aRows.push(["   Loan Amount", principal]);
+    aRows.push(["   Interest Rate", `${(annualRate * 100).toFixed(2)}%`]);
+    aRows.push(["   Term (years)", termYears]);
+    const mp = principal > 0 && annualRate > 0
+      ? (principal * monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / (Math.pow(1 + monthlyRate, numPayments) - 1)
+      : 0;
+    aRows.push(["   Monthly Payment", Math.round(mp)]);
+    aRows.push(["   Total Interest", Math.round(loanSchedule.reduce((s, l) => s + l.interest, 0))]);
+  }
+
+  aRows.push([], ["KEY METRICS"]);
+  aRows.push(["   Break-Even Month", result.breakEven.breakEvenMonth ?? "N/A"]);
+  aRows.push(["   Break-Even (tons/day)", result.breakEven.breakEvenTonsPerDay.toFixed(1)]);
+  aRows.push(["   Steady-State Net Margin", `${(result.steadyStateMargin * 100).toFixed(1)}%`]);
+  aRows.push(["   CAPEX Payback (months)", result.paybackMonths ?? "N/A"]);
+  aRows.push(["   Max Daily Capacity (tons)", result.maxDailyCapacityTons.toFixed(1)]);
+
+  const wsA = XLSX.utils.aoa_to_sheet(aRows);
+  setCols(wsA, 38, 2, 18);
+  XLSX.utils.book_append_sheet(wb, wsA, "Assumptions");
+
+  // ════════════════════════════════════════════════════════════════════════
+  // SHEET 2: INCOME STATEMENT (Annual)
+  // ════════════════════════════════════════════════════════════════════════
+  const isRows: Row[] = [
+    ["DYRT LABS, INC."],
+    ["Pro Forma Income Statement"],
+    [],
+    headers,
+    [],
+    ["Revenue"],
+    annualRow("Tipping Fees", (p) => p.tippingRevenue, true),
+    annualRow("Compost Sales", (p) => p.compostRevenue, true),
+    annualRow("Total Revenue", (p) => p.totalRevenue),
+    blankRow(),
+    ["Cost of Goods Sold"],
+    annualRow("Sawdust & Carbon", (p) => -p.sawdustCost, true),
+    annualRow("Digester Disposal & Hauling", (p) => -(p.digesterDisposalCost + p.digesterHaulingCost), true),
+    annualRow("Compost Shipping", (p) => -p.shippingCost, true),
+    annualRow("Total COGS", (p) => -(p.sawdustCost + p.digesterDisposalCost + p.digesterHaulingCost + p.shippingCost)),
+    blankRow(),
+    annualRow("Gross Profit", (p) => p.totalRevenue - p.sawdustCost - p.shippingCost - p.digesterDisposalCost - p.digesterHaulingCost),
+    pctRow("   Gross Margin",
+      (p) => p.totalRevenue - p.sawdustCost - p.shippingCost - p.digesterDisposalCost - p.digesterHaulingCost,
+      (p) => p.totalRevenue),
+    blankRow(),
+    ["Operating Expenses"],
+    annualRow("Salaries & Wages", (p) => -p.laborCost, true),
+    annualRow("Rent & Occupancy", (p) => -p.facilityCost, true),
+    annualRow("Fleet Operations", (p) => -p.truckCost, true),
+    annualRow("General & Administrative", (p) => -p.otherOpex, true),
+    annualRow("Total Operating Expenses", (p) => -(p.laborCost + p.facilityCost + p.truckCost + p.otherOpex)),
+    blankRow(),
+    annualRow("EBITDA", (p) => {
+      const gp = p.totalRevenue - p.sawdustCost - p.shippingCost - p.digesterDisposalCost - p.digesterHaulingCost;
+      return gp - p.laborCost - p.facilityCost - p.truckCost - p.otherOpex;
+    }),
+    pctRow("   EBITDA Margin",
+      (p) => {
+        const gp = p.totalRevenue - p.sawdustCost - p.shippingCost - p.digesterDisposalCost - p.digesterHaulingCost;
+        return gp - p.laborCost - p.facilityCost - p.truckCost - p.otherOpex;
+      },
+      (p) => p.totalRevenue),
+    blankRow(),
+    annualRow("Depreciation & Amortization", () => -monthlyDep, true),
+    annualRow("Interest Expense", (_, i) => -monthlyInterest[i], true),
+    blankRow(),
+    annualRow("Net Income (Loss)", (_, i) => monthlyNetIncome[i]),
+    pctRow("   Net Margin", (_, i) => monthlyNetIncome[i], (p) => p.totalRevenue),
   ];
 
   const wsIS = XLSX.utils.aoa_to_sheet(isRows);
-  wsIS["!cols"] = [{ wch: 40 }, ...months.map(() => ({ wch: 14 }))];
+  setCols(wsIS, 38, numYears);
   XLSX.utils.book_append_sheet(wb, wsIS, "Income Statement");
 
-  // ── Sheet 3: Cash Flow Statement ──────────────────────────────────────
-  const equityInvested = result.totalCapex * inputs.equityPercentage;
-  const loanProceeds = principal;
+  // ════════════════════════════════════════════════════════════════════════
+  // SHEET 3: CASH FLOW STATEMENT (Annual)
+  // ════════════════════════════════════════════════════════════════════════
 
-  const cfRows: (string | number)[][] = [
-    ["STATEMENT OF CASH FLOWS", ...months],
+  const cfOps = proj.map((_, i) => monthlyNetIncome[i] + monthlyDep);
+  const cfInv = proj.map((_, i) => i === 0 ? -result.totalCapex : 0);
+  const cfFinEquity = proj.map((_, i) => i === 0 ? equityInvested : 0);
+  const cfFinLoan = proj.map((_, i) => i === 0 ? principal : 0);
+  const cfFinRepay = proj.map((_, i) => -monthlyPrincipalPay[i]);
+  const cfFin = proj.map((_, i) => cfFinEquity[i] + cfFinLoan[i] + cfFinRepay[i]);
+  const cfNet = proj.map((_, i) => cfOps[i] + cfInv[i] + cfFin[i]);
+
+  // Cumulative cash
+  const cumCash: number[] = [];
+  let rc = 0;
+  for (const c of cfNet) { rc += c; cumCash.push(rc); }
+
+  const cfRows: Row[] = [
+    ["DYRT LABS, INC."],
+    ["Pro Forma Statement of Cash Flows"],
     [],
-    isBold("Cash Flows from Operations", []),
-    isRow("Net Income", netIncome, 1),
-    isRow("Add: Depreciation", proj.map(() => monthlyDepreciation), 1),
-    isBold("Net Cash from Operations", proj.map((_, i) => netIncome[i] + monthlyDepreciation)),
+    headers,
     [],
-    isBold("Cash Flows from Investing", []),
-    isRow("Capital Expenditures", proj.map((_, i) => i === 0 ? -result.totalCapex : 0), 1),
-    isBold("Net Cash from Investing", proj.map((_, i) => i === 0 ? -result.totalCapex : 0)),
-    [],
-    isBold("Cash Flows from Financing", []),
-    isRow("Equity Contributed", proj.map((_, i) => i === 0 ? equityInvested : 0), 1),
-    isRow("Loan Proceeds", proj.map((_, i) => i === 0 ? loanProceeds : 0), 1),
-    isRow("Loan Principal Repayment", proj.map((_, i) => -(loanSchedule[i]?.principalPay ?? 0)), 1),
-    isBold("Net Cash from Financing", proj.map((_, i) => {
-      const equity = i === 0 ? equityInvested : 0;
-      const loan = i === 0 ? loanProceeds : 0;
-      const repay = -(loanSchedule[i]?.principalPay ?? 0);
-      return equity + loan + repay;
-    })),
-    [],
+    ["Cash Flows from Operating Activities"],
+    annualRow("Net Income (Loss)", (_, i) => monthlyNetIncome[i], true),
+    annualRow("Depreciation & Amortization", () => monthlyDep, true),
+    annualRow("Net Cash from Operations", (_, i) => cfOps[i]),
+    blankRow(),
+    ["Cash Flows from Investing Activities"],
+    annualRow("Capital Expenditures", (_, i) => cfInv[i], true),
+    annualRow("Net Cash from Investing", (_, i) => cfInv[i]),
+    blankRow(),
+    ["Cash Flows from Financing Activities"],
+    annualRow("Owner Equity Contributions", (_, i) => cfFinEquity[i], true),
+    annualRow("Loan Proceeds", (_, i) => cfFinLoan[i], true),
+    annualRow("Loan Principal Repayments", (_, i) => cfFinRepay[i], true),
+    annualRow("Net Cash from Financing", (_, i) => cfFin[i]),
+    blankRow(),
+    annualRow("Net Increase (Decrease) in Cash", (_, i) => cfNet[i]),
+    blankRow(),
+    annualEndBalance("Cash — End of Period", (_, i) => cumCash[i]),
   ];
-
-  // Net change and cumulative
-  const netCashChange = proj.map((_, i) => {
-    const ops = netIncome[i] + monthlyDepreciation;
-    const inv = i === 0 ? -result.totalCapex : 0;
-    const fin = (i === 0 ? equityInvested + loanProceeds : 0) - (loanSchedule[i]?.principalPay ?? 0);
-    return ops + inv + fin;
-  });
-
-  const cumulativeCash: number[] = [];
-  let runningCash = 0;
-  for (const nc of netCashChange) {
-    runningCash += nc;
-    cumulativeCash.push(runningCash);
-  }
-
-  cfRows.push(
-    isBold("Net Change in Cash", netCashChange),
-    [],
-    isBold("Cash Balance (End of Period)", cumulativeCash),
-  );
 
   const wsCF = XLSX.utils.aoa_to_sheet(cfRows);
-  wsCF["!cols"] = [{ wch: 35 }, ...months.map(() => ({ wch: 14 }))];
-  XLSX.utils.book_append_sheet(wb, wsCF, "Cash Flow Statement");
+  setCols(wsCF, 38, numYears);
+  XLSX.utils.book_append_sheet(wb, wsCF, "Cash Flows");
 
-  // ── Sheet 4: Balance Sheet ────────────────────────────────────────────
-  const bsRows: (string | number)[][] = [
-    ["BALANCE SHEET", ...months],
+  // ════════════════════════════════════════════════════════════════════════
+  // SHEET 4: BALANCE SHEET (Annual, end-of-period)
+  // ════════════════════════════════════════════════════════════════════════
+
+  const retEarnings: number[] = [];
+  let cumNI = 0;
+  for (let i = 0; i < proj.length; i++) { cumNI += monthlyNetIncome[i]; retEarnings.push(cumNI); }
+
+  const bsRows: Row[] = [
+    ["DYRT LABS, INC."],
+    ["Pro Forma Balance Sheet"],
     [],
-    isBold("ASSETS", []),
-    isRow("Cash & Equivalents", cumulativeCash, 1),
-    isRow("PP&E (Gross)", proj.map(() => result.totalCapex), 1),
-    isRow("Less: Accumulated Depreciation", proj.map((_, i) => -(i + 1) * monthlyDepreciation), 1),
-    isRow("PP&E (Net)", proj.map((_, i) => result.totalCapex - (i + 1) * monthlyDepreciation), 1),
-    isBold("Total Assets", proj.map((_, i) => {
-      const cash = cumulativeCash[i];
-      const ppeNet = result.totalCapex - (i + 1) * monthlyDepreciation;
-      return cash + ppeNet;
-    })),
+    headers,
     [],
-    isBold("LIABILITIES", []),
-    isRow("Loan Payable", proj.map((_, i) => loanSchedule[i]?.balance ?? 0), 1),
-    isBold("Total Liabilities", proj.map((_, i) => loanSchedule[i]?.balance ?? 0)),
-    [],
-    isBold("EQUITY", []),
-    isRow("Contributed Capital", proj.map(() => equityInvested), 1),
+    ["ASSETS"],
+    ["Current Assets"],
+    annualEndBalance("Cash & Cash Equivalents", (_, i) => cumCash[i], true),
+    annualEndBalance("Total Current Assets", (_, i) => cumCash[i]),
+    blankRow(),
+    ["Non-Current Assets"],
+    annualEndBalance("Property, Plant & Equipment", () => result.totalCapex, true),
+    annualEndBalance("Less: Accumulated Depreciation", (_, i) => -(i + 1) * monthlyDep, true),
+    annualEndBalance("Net PP&E", (_, i) => result.totalCapex - (i + 1) * monthlyDep, true),
+    annualEndBalance("Total Non-Current Assets", (_, i) => result.totalCapex - (i + 1) * monthlyDep),
+    blankRow(),
+    annualEndBalance("TOTAL ASSETS", (_, i) => cumCash[i] + result.totalCapex - (i + 1) * monthlyDep),
+    blankRow(),
+    blankRow(),
+    ["LIABILITIES & EQUITY"],
+    ["Liabilities"],
+    annualEndBalance("Term Loan Payable", (_, i) => loanSchedule[i]?.balance ?? 0, true),
+    annualEndBalance("Total Liabilities", (_, i) => loanSchedule[i]?.balance ?? 0),
+    blankRow(),
+    ["Stockholders' Equity"],
+    annualEndBalance("Contributed Capital", () => equityInvested, true),
+    annualEndBalance("Retained Earnings (Deficit)", (_, i) => retEarnings[i], true),
+    annualEndBalance("Total Stockholders' Equity", (_, i) => equityInvested + retEarnings[i]),
+    blankRow(),
+    annualEndBalance("TOTAL LIABILITIES & EQUITY", (_, i) => {
+      const liab = loanSchedule[i]?.balance ?? 0;
+      return liab + equityInvested + retEarnings[i];
+    }),
   ];
 
-  // Retained earnings = cumulative net income
-  const retainedEarnings: number[] = [];
-  let cumNI = 0;
-  for (let i = 0; i < proj.length; i++) {
-    cumNI += netIncome[i];
-    retainedEarnings.push(cumNI);
-  }
-
-  bsRows.push(
-    isRow("Retained Earnings", retainedEarnings, 1),
-    isBold("Total Equity", proj.map((_, i) => equityInvested + retainedEarnings[i])),
-    [],
-    isBold("Total Liabilities + Equity", proj.map((_, i) => {
-      const liab = loanSchedule[i]?.balance ?? 0;
-      const equity = equityInvested + retainedEarnings[i];
-      return liab + equity;
-    })),
-  );
-
   const wsBS = XLSX.utils.aoa_to_sheet(bsRows);
-  wsBS["!cols"] = [{ wch: 35 }, ...months.map(() => ({ wch: 14 }))];
+  setCols(wsBS, 38, numYears);
   XLSX.utils.book_append_sheet(wb, wsBS, "Balance Sheet");
 
+  // ════════════════════════════════════════════════════════════════════════
+  // SHEET 5: MONTHLY DETAIL (for due diligence)
+  // ════════════════════════════════════════════════════════════════════════
+  const mHeaders = ["", ...proj.map((p) => `Mo ${p.month}`)];
+  const mRows: Row[] = [
+    ["MONTHLY OPERATING DETAIL"],
+    [],
+    mHeaders,
+    [],
+    ["Operational Metrics"],
+    ["   Utilization", ...proj.map((p) => `${(p.utilization * 100).toFixed(1)}%`)],
+    ["   Daily Tons", ...proj.map((p) => Math.round(p.dailyTonsIn * 10) / 10)],
+    ["   Monthly Tons", ...proj.map((p) => Math.round(p.monthlyTonsIn))],
+    [],
+    ["Revenue"],
+    ["   Tipping Fees", ...proj.map((p) => Math.round(p.tippingRevenue))],
+    ["   Compost Sales", ...proj.map((p) => Math.round(p.compostRevenue))],
+    ["   Total Revenue", ...proj.map((p) => Math.round(p.totalRevenue))],
+    [],
+    ["Variable Costs"],
+    ["   Sawdust", ...proj.map((p) => Math.round(p.sawdustCost))],
+    ["   Digester Disposal", ...proj.map((p) => Math.round(p.digesterDisposalCost))],
+    ["   Digester Hauling", ...proj.map((p) => Math.round(p.digesterHaulingCost))],
+    ["   Compost Shipping", ...proj.map((p) => Math.round(p.shippingCost))],
+    [],
+    ["Fixed Costs"],
+    ["   Labor", ...proj.map((p) => Math.round(p.laborCost))],
+    ["   Rent", ...proj.map((p) => Math.round(p.facilityCost))],
+    ["   Fleet", ...proj.map((p) => Math.round(p.truckCost))],
+    ["   Other", ...proj.map((p) => Math.round(p.otherOpex))],
+    [],
+    ["   Total OpEx", ...proj.map((p) => Math.round(p.totalOpex))],
+    ["   Debt Service", ...proj.map((p) => Math.round(p.debtService))],
+    [],
+    ["Net Profit (Loss)", ...proj.map((p) => Math.round(p.netProfit))],
+    ["Cumulative P&L", ...proj.map((p) => Math.round(p.cumulativeProfit))],
+    [],
+    ["Loan Balance", ...proj.map((_, i) => Math.round(loanSchedule[i]?.balance ?? 0))],
+    ["Cash Balance", ...cumCash.map((c) => Math.round(c))],
+  ];
+
+  const wsMo = XLSX.utils.aoa_to_sheet(mRows);
+  setCols(wsMo, 22, proj.length, 12);
+  XLSX.utils.book_append_sheet(wb, wsMo, "Monthly Detail");
+
   // ── Write ─────────────────────────────────────────────────────────────
-  const filename = `Dyrt_ProForma_${new Date().toISOString().slice(0, 10)}.xlsx`;
-  XLSX.writeFile(wb, filename);
+  XLSX.writeFile(wb, `Dyrt_Labs_ProForma_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }

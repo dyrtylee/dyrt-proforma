@@ -57,10 +57,11 @@ export const defaultInputs: FacilityInputs = {
   // Labor escalation
   laborEscalatorRate: 0.03, // 3% annual raise
 
-  // Ramp
+  // Ramp & Growth
   rampMonths: 12,
   startingTonnage: 5, // tons/day starting
-  startingUtilization: 0.15,
+  annualTonnageGrowth: 0.35, // 35% annual growth in tonnage
+  startingUtilization: 0.15, // legacy
 
   // Financing
   loanInterestRate: 0.085,
@@ -138,7 +139,7 @@ export const inputConfigs: InputConfig[] = [
 
   // Ramp
   { key: "startingTonnage", label: "Starting Tonnage (tons/day)", min: 1, max: 50, step: 1, format: "number", group: "Ramp & Financing" },
-  { key: "rampMonths", label: "Months to Full Capacity", min: 3, max: 36, step: 1, format: "number", group: "Ramp & Financing" },
+  { key: "annualTonnageGrowth", label: "Annual Tonnage Growth", min: 0.05, max: 1.00, step: 0.05, format: "percent", group: "Ramp & Financing" },
   { key: "loanInterestRate", label: "Loan Interest Rate", min: 0.04, max: 0.15, step: 0.005, format: "percent", group: "Ramp & Financing" },
   { key: "loanTermYears", label: "Loan Term (years)", min: 3, max: 20, step: 1, format: "number", group: "Ramp & Financing" },
   { key: "equityPercentage", label: "Equity % of CAPEX", min: 0, max: 1, step: 0.05, format: "percent", group: "Ramp & Financing" },

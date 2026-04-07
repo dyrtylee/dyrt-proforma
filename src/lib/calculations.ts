@@ -95,10 +95,12 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
   let cumulativeProfit = -totalCapex * inputs.equityPercentage; // equity invested upfront
 
   for (let m = 1; m <= inputs.projectionMonths; m++) {
-    // Ramp: linear from startingTonnage to maxDailyCapacityTons over rampMonths
-    const startUtil = Math.min(inputs.startingTonnage / maxDailyCapacityTons, 1);
-    const utilization = calcUtilization(m, inputs.rampMonths, startUtil);
-    const dailyTonsIn = maxDailyCapacityTons * utilization;
+    // Tonnage grows from startingTonnage at annualTonnageGrowth rate, compounded monthly.
+    // Capped at max composter capacity (equipment ceiling).
+    const monthlyGrowthRate = Math.pow(1 + inputs.annualTonnageGrowth, 1 / 12) - 1;
+    const demandTons = inputs.startingTonnage * Math.pow(1 + monthlyGrowthRate, m - 1);
+    const dailyTonsIn = Math.min(demandTons, maxDailyCapacityTons);
+    const utilization = dailyTonsIn / maxDailyCapacityTons;
     const dailyLbsIn = dailyTonsIn * 2000;
     const operatingDays = 26; // ~6 days/week
     const monthlyLbsIn = dailyLbsIn * operatingDays;

@@ -54,8 +54,12 @@ export const defaultInputs: FacilityInputs = {
   trailerCapacityTons: 25, // 53' trailer capacity
   shippingCostPerLoad: 800,
 
+  // Labor escalation
+  laborEscalatorRate: 0.03, // 3% annual raise
+
   // Ramp
   rampMonths: 12,
+  startingTonnage: 5, // tons/day starting
   startingUtilization: 0.15,
 
   // Financing
@@ -111,6 +115,7 @@ export const inputConfigs: InputConfig[] = [
   { key: "numEmployees", label: "Number of Employees", min: 1, max: 30, step: 1, format: "number", group: "Monthly Operating Costs" },
   { key: "hourlyRate", label: "Hourly Rate ($/hr)", min: 15, max: 60, step: 1, format: "currency", group: "Monthly Operating Costs" },
   { key: "payrollTaxRate", label: "Payroll Tax Rate", min: 0.10, max: 0.35, step: 0.01, format: "percent", group: "Monthly Operating Costs" },
+  { key: "laborEscalatorRate", label: "Annual Labor Escalator", min: 0, max: 0.10, step: 0.005, format: "percent", group: "Monthly Operating Costs" },
   { key: "machineCogsPerUnit", label: "Machine COGS (per unit/mo)", min: 500, max: 3000, step: 100, format: "currency", group: "Monthly Operating Costs" },
   { key: "utilities", label: "Utilities", min: 1000, max: 15000, step: 500, format: "currency", group: "Monthly Operating Costs" },
   { key: "insurancePermits", label: "Insurance & Permits", min: 500, max: 10000, step: 250, format: "currency", group: "Monthly Operating Costs" },
@@ -132,8 +137,8 @@ export const inputConfigs: InputConfig[] = [
   { key: "shippingCostPerLoad", label: "Shipping Cost per Load", min: 500, max: 5000, step: 100, format: "currency", group: "Shipping" },
 
   // Ramp
+  { key: "startingTonnage", label: "Starting Tonnage (tons/day)", min: 1, max: 50, step: 1, format: "number", group: "Ramp & Financing" },
   { key: "rampMonths", label: "Months to Full Capacity", min: 3, max: 36, step: 1, format: "number", group: "Ramp & Financing" },
-  { key: "startingUtilization", label: "Starting Utilization", min: 0.05, max: 0.50, step: 0.05, format: "percent", group: "Ramp & Financing" },
   { key: "loanInterestRate", label: "Loan Interest Rate", min: 0.04, max: 0.15, step: 0.005, format: "percent", group: "Ramp & Financing" },
   { key: "loanTermYears", label: "Loan Term (years)", min: 3, max: 20, step: 1, format: "number", group: "Ramp & Financing" },
   { key: "equityPercentage", label: "Equity % of CAPEX", min: 0, max: 1, step: 0.05, format: "percent", group: "Ramp & Financing" },

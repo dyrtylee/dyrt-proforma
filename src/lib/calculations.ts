@@ -56,21 +56,10 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
   const totalCapex = Object.values(capexBreakdown).reduce((sum, v) => sum + v, 0);
 
   // --- CAPACITY ---
-  // Each composter absorbs 2,500 lbs/day of food waste (raw input).
-  // With dewaterer: raw food → dewaterer → 20% goes to composter, 80% sludge to digester
-  // BUT the composter capacity is rated for the dewatered material,
-  // meaning each composter can handle the output from MORE raw food waste.
-  // Actually: "each composter can absorb 2,500 lbs of food waste" - this is the rated input.
-  // The dewaterer sits BEFORE composters, so effective raw input per composter is higher.
-  // 2,500 lbs dewatered = 2,500 / (1 - 0.80) = 12,500 lbs raw food waste equivalent
-  // BUT if composter capacity is quoted as raw food waste, then with dewatering,
-  // the composter only receives 20% of that, meaning it can handle 5x more raw input.
-
-  // Interpretation: composterCapacityLbs is the LBS of FOOD WASTE the composter processes.
-  // With dewatering, we can accept more raw tonnage because 80% is removed as water/sludge.
-  // Effective raw capacity per composter = composterCapacityLbs / (1 - dewateringReduction)
-  const effectiveRawCapacityPerComposter = inputs.composterCapacityLbs / (1 - inputs.dewateringReduction);
-  const maxDailyCapacityLbs = inputs.numComposters * effectiveRawCapacityPerComposter;
+  // composterCapacityLbs = lbs of RAW food waste each composter can process per day.
+  // The dewaterer reduces this weight before it enters the composting vessel,
+  // but the rated capacity is based on raw food waste throughput.
+  const maxDailyCapacityLbs = inputs.numComposters * inputs.composterCapacityLbs;
   const maxDailyCapacityTons = maxDailyCapacityLbs / 2000;
 
   // --- SAWDUST RATIO ---
@@ -106,12 +95,19 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
   let cumulativeProfit = -totalCapex * inputs.equityPercentage; // equity invested upfront
 
   for (let m = 1; m <= inputs.projectionMonths; m++) {
-    const utilization = calcUtilization(m, inputs.rampMonths, inputs.startingUtilization);
+    // Ramp: linear from startingTonnage to maxDailyCapacityTons over rampMonths
+    const startUtil = Math.min(inputs.startingTonnage / maxDailyCapacityTons, 1);
+    const utilization = calcUtilization(m, inputs.rampMonths, startUtil);
     const dailyTonsIn = maxDailyCapacityTons * utilization;
     const dailyLbsIn = dailyTonsIn * 2000;
     const operatingDays = 26; // ~6 days/week
     const monthlyLbsIn = dailyLbsIn * operatingDays;
     const monthlyTonsIn = monthlyLbsIn / 2000;
+
+    // Labor escalation: compound annually
+    const yearsElapsed = (m - 1) / 12;
+    const laborMultiplier = Math.pow(1 + inputs.laborEscalatorRate, yearsElapsed);
+    const escalatedLabor = totalLabor * laborMultiplier;
 
     // Dewatering
     const dewateredLbs = monthlyLbsIn * (1 - inputs.dewateringReduction);
@@ -136,8 +132,9 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
     const compostRevenue = compostCY * inputs.compostPricePerCY;
     const totalRevenue = tippingRevenue + compostRevenue;
 
-    // Costs
-    const totalOpex = monthlyFixedCosts + sawdustCost + shippingCost;
+    // Costs (with escalated labor)
+    const monthFixedCosts = escalatedLabor + machineCogs + inputs.facilityLease + truckOpex + otherFixed;
+    const totalOpex = monthFixedCosts + sawdustCost + shippingCost;
 
     // Profitability
     const grossProfit = totalRevenue - sawdustCost - shippingCost - machineCogs;
@@ -163,7 +160,7 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
       compostRevenue,
       shippingCost,
       totalRevenue,
-      laborCost: totalLabor,
+      laborCost: escalatedLabor,
       machineCogs,
       sawdustCost,
       facilityCost: inputs.facilityLease,

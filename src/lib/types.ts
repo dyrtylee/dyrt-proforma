@@ -52,9 +52,13 @@ export interface FacilityInputs {
   trailerCapacityTons: number;
   shippingCostPerLoad: number;
 
+  // Labor escalation
+  laborEscalatorRate: number; // annual % increase (0-1), e.g. 0.03 = 3%/yr
+
   // Ramp
   rampMonths: number; // months to reach full capacity
-  startingUtilization: number; // starting % (0-1)
+  startingTonnage: number; // starting tons/day
+  startingUtilization: number; // starting % (0-1) — computed from startingTonnage if set
 
   // Financing
   loanInterestRate: number; // annual (0-1)

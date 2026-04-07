@@ -139,3 +139,13 @@ export const inputConfigs: InputConfig[] = [
   { key: "equityPercentage", label: "Equity % of CAPEX", min: 0, max: 1, step: 0.05, format: "percent", group: "Ramp & Financing" },
   { key: "projectionMonths", label: "Projection Period (months)", min: 12, max: 120, step: 6, format: "number", group: "Ramp & Financing" },
 ];
+
+export const groupOrder = [
+  "Revenue",
+  "Monthly Operating Costs",
+  "Equipment CAPEX",
+  "Facility CAPEX",
+  "Carbon & Amendments",
+  "Shipping",
+  "Ramp & Financing",
+];

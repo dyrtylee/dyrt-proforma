@@ -8,9 +8,9 @@
   --border: #1e293b;
   --border-light: #2d3a4f;
   --muted: #94a3b8;
-  --accent: #06b6d4;
-  --accent-dim: rgba(6, 182, 212, 0.15);
-  --accent-hover: #22d3ee;
+  --accent: #2abf9c;
+  --accent-dim: rgba(42, 191, 156, 0.15);
+  --accent-hover: #3dd4af;
   --green: #10b981;
   --green-dim: rgba(16, 185, 129, 0.15);
   --red: #f43f5e;
@@ -52,7 +52,6 @@ body {
   color: var(--foreground);
 }
 
-/* Custom scrollbar for dark theme */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -68,7 +67,6 @@ body {
   background: var(--muted);
 }
 
-/* Slider styling */
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
@@ -86,9 +84,9 @@ input[type="range"]::-webkit-slider-thumb {
   background: var(--accent);
   cursor: pointer;
   border: 2px solid var(--background);
-  box-shadow: 0 0 6px rgba(6, 182, 212, 0.4);
+  box-shadow: 0 0 6px rgba(42, 191, 156, 0.4);
 }
 input[type="range"]::-webkit-slider-thumb:hover {
   background: var(--accent-hover);
-  box-shadow: 0 0 10px rgba(6, 182, 212, 0.6);
+  box-shadow: 0 0 10px rgba(42, 191, 156, 0.6);
 }

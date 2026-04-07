@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { defaultInputs, inputConfigs } from "@/lib/defaults";
+import { defaultInputs, inputConfigs, groupOrder } from "@/lib/defaults";
 import { calculateProForma } from "@/lib/calculations";
 import { FacilityInputs } from "@/lib/types";
 import { fmtCurrency, fmtCurrencyFull, fmtPercent, fmtNumber, fmtTons } from "@/lib/format";
@@ -16,8 +16,8 @@ import {
 const fmt = (formatter: (v: number) => string) => (v: any) => (typeof v === "number" ? formatter(v) : String(v ?? ""));
 
 const COLORS = [
-  "#06b6d4", "#10b981", "#f97316", "#8b5cf6", "#f43f5e",
-  "#3b82f6", "#eab308", "#ec4899", "#6366f1", "#14b8a6",
+  "#2abf9c", "#3b82f6", "#f97316", "#8b5cf6", "#f43f5e",
+  "#eab308", "#ec4899", "#6366f1", "#14b8a6", "#06b6d4",
   "#f59e0b", "#a855f7", "#0ea5e9",
 ];
 
@@ -30,7 +30,7 @@ const CHART_TEXT = "#94a3b8";
 export default function ProFormaPage() {
   const [inputs, setInputs] = useState<FacilityInputs>({ ...defaultInputs });
   const [activeTab, setActiveTab] = useState<Tab>("Summary");
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(["Equipment CAPEX"]));
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(["Revenue"]));
 
   const result = useMemo(() => calculateProForma(inputs), [inputs]);
 
@@ -47,21 +47,91 @@ export default function ProFormaPage() {
     });
   }
 
-  const groups = [...new Set(inputConfigs.map((c) => c.group))];
+  const groups = groupOrder.filter((g) => inputConfigs.some((c) => c.group === g));
+
+  function exportToExcel() {
+    const BOM = "\uFEFF";
+    const sheets: string[] = [];
+
+    // Summary sheet
+    sheets.push("FACILITY PRO FORMA - DYRT LABS");
+    sheets.push(`Generated,${new Date().toLocaleDateString()}`);
+    sheets.push("");
+    sheets.push("KEY METRICS");
+    sheets.push(`Total CAPEX,${result.totalCapex}`);
+    sheets.push(`Max Daily Capacity (tons),${result.maxDailyCapacityTons.toFixed(1)}`);
+    sheets.push(`Break-Even (tons/day),${result.breakEven.breakEvenTonsPerDay.toFixed(1)}`);
+    sheets.push(`Break-Even Month,${result.breakEven.breakEvenMonth ?? "N/A"}`);
+    sheets.push(`Steady-State Net Margin,${(result.steadyStateMargin * 100).toFixed(1)}%`);
+    sheets.push(`CAPEX Payback (months),${result.paybackMonths ?? "N/A"}`);
+    sheets.push("");
+
+    // Inputs
+    sheets.push("INPUT ASSUMPTIONS");
+    for (const config of inputConfigs) {
+      const val = inputs[config.key] as number;
+      const display = config.format === "percent" ? `${(val * 100).toFixed(1)}%` : val;
+      sheets.push(`${config.label},${display}`);
+    }
+    sheets.push("");
+
+    // CAPEX
+    sheets.push("CAPEX BREAKDOWN");
+    sheets.push("Item,Cost");
+    for (const [name, value] of Object.entries(result.capexBreakdown)) {
+      sheets.push(`${name},${value}`);
+    }
+    sheets.push(`Total,${result.totalCapex}`);
+    sheets.push("");
+
+    // Monthly projections
+    sheets.push("MONTHLY PROJECTIONS");
+    sheets.push("Month,Utilization,Tons/Day,Monthly Tons,Revenue,Operating Costs,Net Profit,Net Margin,Cumulative P&L");
+    for (const p of result.monthlyProjections) {
+      sheets.push([
+        p.month,
+        `${(p.utilization * 100).toFixed(1)}%`,
+        p.dailyTonsIn.toFixed(1),
+        p.monthlyTonsIn.toFixed(0),
+        p.totalRevenue.toFixed(0),
+        p.totalOpex.toFixed(0),
+        p.netProfit.toFixed(0),
+        `${(p.netMargin * 100).toFixed(1)}%`,
+        p.cumulativeProfit.toFixed(0),
+      ].join(","));
+    }
+
+    const csv = BOM + sheets.join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Dyrt_ProForma_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <div className="flex min-h-screen bg-background">
       {/* Sidebar */}
       <aside className="w-96 bg-navy border-r border-border overflow-y-auto flex-shrink-0 print:hidden">
         <div className="sticky top-0 bg-navy border-b border-border px-6 py-5 z-10">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
-              <span className="text-accent font-bold text-sm">D</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
+                <span className="text-accent font-bold text-sm">D</span>
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-foreground tracking-tight">DYRT LABS</h1>
+                <p className="text-xs text-muted">Facility Pro Forma</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-lg font-bold text-foreground tracking-tight">DYRT LABS</h1>
-              <p className="text-xs text-muted">Facility Pro Forma</p>
-            </div>
+            <button
+              onClick={exportToExcel}
+              className="px-3 py-1.5 text-xs font-medium bg-accent/15 text-accent border border-accent/30 rounded-lg hover:bg-accent/25 transition-colors"
+            >
+              Export
+            </button>
           </div>
         </div>
         <div className="px-3 py-3 space-y-1">
@@ -258,7 +328,7 @@ function SummaryTab({ result, inputs }: { result: ReturnType<typeof calculatePro
             <YAxis stroke={CHART_TEXT} tick={{ fill: CHART_TEXT, fontSize: 11 }} tickFormatter={(v: number) => fmtCurrency(v)} />
             <Tooltip contentStyle={tooltipStyle} formatter={fmt(fmtCurrencyFull)} />
             <Legend wrapperStyle={{ color: CHART_TEXT, fontSize: 12 }} />
-            <Area type="monotone" dataKey="totalRevenue" name="Revenue" fill="rgba(6, 182, 212, 0.15)" stroke="#06b6d4" strokeWidth={2} />
+            <Area type="monotone" dataKey="totalRevenue" name="Revenue" fill="rgba(42, 191, 156, 0.15)" stroke="#2abf9c" strokeWidth={2} />
             <Line type="monotone" dataKey="totalOpex" name="Operating Costs" stroke="#f43f5e" strokeWidth={2} dot={false} />
             <ReferenceLine y={0} stroke="#2d3a4f" strokeDasharray="3 3" />
           </ComposedChart>
@@ -427,7 +497,7 @@ function OperationsTab({ result, inputs }: { result: ReturnType<typeof calculate
                 <XAxis type="number" stroke={CHART_TEXT} tick={{ fill: CHART_TEXT, fontSize: 11 }} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}K lbs`} />
                 <YAxis dataKey="name" type="category" width={180} tick={{ fill: CHART_TEXT, fontSize: 12 }} stroke={CHART_GRID} />
                 <Tooltip contentStyle={tooltipStyle} formatter={fmt((v) => `${fmtNumber(v)} lbs`)} />
-                <Bar dataKey="lbs" fill="#06b6d4" radius={[0, 6, 6, 0]} />
+                <Bar dataKey="lbs" fill="#2abf9c" radius={[0, 6, 6, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </Card>
@@ -548,7 +618,8 @@ function BreakEvenTab({ result, inputs }: { result: ReturnType<typeof calculateP
   const be = result.breakEven;
 
   const tonnageSteps = [];
-  for (let t = 0; t <= result.maxDailyCapacityTons * 1.2; t += result.maxDailyCapacityTons / 20) {
+  const numSteps = 10;
+  for (let t = 0; t <= result.maxDailyCapacityTons * 1.2; t += (result.maxDailyCapacityTons * 1.2) / numSteps) {
     const monthlyTons = t * 26;
     const monthlyLbs = monthlyTons * 2000;
     const revenue = monthlyLbs * inputs.tippingFeePerLb;
@@ -563,7 +634,7 @@ function BreakEvenTab({ result, inputs }: { result: ReturnType<typeof calculateP
     const totalCost = be.monthlyFixedCosts + varCost;
 
     tonnageSteps.push({
-      tonsPerDay: parseFloat(t.toFixed(1)),
+      tonsPerDay: Math.round(t),
       revenue: totalRev,
       totalCost,
       fixedCost: be.monthlyFixedCosts,
@@ -590,7 +661,7 @@ function BreakEvenTab({ result, inputs }: { result: ReturnType<typeof calculateP
             <YAxis stroke={CHART_TEXT} tick={{ fill: CHART_TEXT, fontSize: 11 }} tickFormatter={(v: number) => fmtCurrency(v)} />
             <Tooltip contentStyle={tooltipStyle} formatter={fmt(fmtCurrencyFull)} />
             <Legend wrapperStyle={{ color: CHART_TEXT, fontSize: 12 }} />
-            <Line type="monotone" dataKey="revenue" name="Total Revenue" stroke="#06b6d4" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="revenue" name="Total Revenue" stroke="#2abf9c" strokeWidth={2} dot={false} />
             <Line type="monotone" dataKey="totalCost" name="Total Cost" stroke="#f43f5e" strokeWidth={2} dot={false} />
             <Area type="monotone" dataKey="fixedCost" name="Fixed Costs" fill="rgba(244, 63, 94, 0.08)" stroke="rgba(244, 63, 94, 0.3)" strokeWidth={1} />
             {be.breakEvenTonsPerDay <= result.maxDailyCapacityTons * 1.2 && (
@@ -656,7 +727,7 @@ function ProjectionsTab({ result }: { result: ReturnType<typeof calculateProForm
             <YAxis yAxisId="right" orientation="right" stroke={CHART_TEXT} tick={{ fill: CHART_TEXT, fontSize: 11 }} tickFormatter={(v: number) => `${v.toFixed(0)}t`} />
             <Tooltip contentStyle={tooltipStyle} />
             <Legend wrapperStyle={{ color: CHART_TEXT, fontSize: 12 }} />
-            <Area yAxisId="left" type="monotone" dataKey="utilization" name="Utilization %" fill="rgba(6, 182, 212, 0.15)" stroke="#06b6d4" strokeWidth={2} />
+            <Area yAxisId="left" type="monotone" dataKey="utilization" name="Utilization %" fill="rgba(42, 191, 156, 0.15)" stroke="#2abf9c" strokeWidth={2} />
             <Line yAxisId="right" type="monotone" dataKey="dailyTonsIn" name="Daily Tons" stroke="#f97316" strokeWidth={2} dot={false} />
           </ComposedChart>
         </ResponsiveContainer>

@@ -28,10 +28,29 @@ type Tab = (typeof TABS)[number];
 const CHART_GRID = "#1e293b";
 const CHART_TEXT = "#94a3b8";
 
+const TAB_DESCRIPTIONS: Record<Tab, string> = {
+  Summary: "High-level KPIs, revenue vs. cost trajectory, and key milestones for the facility buildout.",
+  CAPEX: "Breakdown of all capital expenditures — equipment, facility, and fleet.",
+  Operations: "Steady-state material flow from food waste intake through composting to finished product shipping.",
+  "Break-Even": "Tonnage and utilization required to cover all fixed and variable costs.",
+  Projections: "Month-by-month financial projections including cumulative P&L and utilization ramp.",
+  Sensitivity: "How changes in key variables impact steady-state net margin.",
+  Loan: "Full amortization schedule with principal/interest split and payoff timeline.",
+};
+
+const WALKTHROUGH_STEPS = [
+  { title: "Welcome to the Dyrt Facility Pro Forma", body: "This interactive model lets you explore the economics of a single composting facility buildout. Every variable is adjustable — the charts and financials update in real time." },
+  { title: "Sidebar: Adjust Assumptions", body: "The left panel contains all input variables organized by category. Start with Revenue to set your tonnage growth, then explore operating costs, equipment CAPEX, and financing terms." },
+  { title: "Tabs: Explore the Financials", body: "Each tab shows a different view of the model — from high-level summary KPIs to detailed break-even analysis, monthly projections, sensitivity testing, and loan amortization." },
+  { title: "Export to Excel", body: "Click the Export button to download a bank-ready .xlsx file with Assumptions, Income Statement, Cash Flow Statement, Balance Sheet, and Monthly Detail tabs." },
+  { title: "Info Icons", body: "Hover over the info icons next to any variable to see a description of what it controls and how it affects the model." },
+];
+
 export default function ProFormaPage() {
   const [inputs, setInputs] = useState<FacilityInputs>({ ...defaultInputs });
   const [activeTab, setActiveTab] = useState<Tab>("Summary");
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(["Revenue"]));
+  const [walkStep, setWalkStep] = useState<number | null>(null);
 
   const result = useMemo(() => calculateProForma(inputs), [inputs]);
 
@@ -69,12 +88,21 @@ export default function ProFormaPage() {
                 <p className="text-xs text-muted">Facility Pro Forma</p>
               </div>
             </div>
-            <button
-              onClick={exportToExcel}
-              className="px-3 py-1.5 text-xs font-medium bg-accent/15 text-accent border border-accent/30 rounded-lg hover:bg-accent/25 transition-colors"
-            >
-              Export
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setWalkStep(0)}
+                className="w-7 h-7 flex items-center justify-center text-muted hover:text-accent border border-border rounded-lg hover:border-accent/30 transition-colors"
+                title="Guided walkthrough"
+              >
+                <span className="text-sm">?</span>
+              </button>
+              <button
+                onClick={exportToExcel}
+                className="px-3 py-1.5 text-xs font-medium bg-accent/15 text-accent border border-accent/30 rounded-lg hover:bg-accent/25 transition-colors"
+              >
+                Export
+              </button>
+            </div>
           </div>
         </div>
         <div className="px-3 py-3 space-y-1">
@@ -134,6 +162,10 @@ export default function ProFormaPage() {
         </nav>
 
         <div className="p-8">
+          <div className="mb-4 flex items-center gap-2 text-sm text-muted">
+            <InfoIcon tip={TAB_DESCRIPTIONS[activeTab]} />
+            <span>{TAB_DESCRIPTIONS[activeTab]}</span>
+          </div>
           {activeTab === "Summary" && <SummaryTab result={result} inputs={inputs} />}
           {activeTab === "CAPEX" && <CapexTab result={result} />}
           {activeTab === "Operations" && <OperationsTab result={result} inputs={inputs} />}
@@ -143,7 +175,72 @@ export default function ProFormaPage() {
           {activeTab === "Loan" && <LoanTab inputs={inputs} result={result} />}
         </div>
       </main>
+
+      {/* Walkthrough Modal */}
+      {walkStep !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs text-accent font-medium">{walkStep + 1} / {WALKTHROUGH_STEPS.length}</span>
+            </div>
+            <h3 className="text-lg font-bold text-foreground mb-3">{WALKTHROUGH_STEPS[walkStep].title}</h3>
+            <p className="text-sm text-muted leading-relaxed mb-6">{WALKTHROUGH_STEPS[walkStep].body}</p>
+            <div className="flex items-center justify-between">
+              <button
+                onClick={() => setWalkStep(null)}
+                className="text-xs text-muted hover:text-foreground transition-colors"
+              >
+                Skip
+              </button>
+              <div className="flex gap-2">
+                {walkStep > 0 && (
+                  <button
+                    onClick={() => setWalkStep(walkStep - 1)}
+                    className="px-4 py-2 text-xs font-medium text-muted border border-border rounded-lg hover:text-foreground hover:border-border-light transition-colors"
+                  >
+                    Back
+                  </button>
+                )}
+                <button
+                  onClick={() => walkStep < WALKTHROUGH_STEPS.length - 1 ? setWalkStep(walkStep + 1) : setWalkStep(null)}
+                  className="px-4 py-2 text-xs font-medium bg-accent text-background rounded-lg hover:bg-accent-hover transition-colors"
+                >
+                  {walkStep < WALKTHROUGH_STEPS.length - 1 ? "Next" : "Get Started"}
+                </button>
+              </div>
+            </div>
+            {/* Progress dots */}
+            <div className="flex justify-center gap-1.5 mt-5">
+              {WALKTHROUGH_STEPS.map((_, i) => (
+                <div key={i} className={`w-1.5 h-1.5 rounded-full transition-colors ${i === walkStep ? "bg-accent" : "bg-border-light"}`} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+// --- Info Icon with Tooltip ---
+function InfoIcon({ tip }: { tip: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="relative inline-flex">
+      <button
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        onClick={() => setShow(!show)}
+        className="w-3.5 h-3.5 rounded-full border border-muted/40 flex items-center justify-center text-muted hover:text-accent hover:border-accent/40 transition-colors flex-shrink-0 cursor-help"
+      >
+        <svg width="7" height="7" viewBox="0 0 7 7" fill="currentColor"><circle cx="3.5" cy="1.5" r="0.7"/><rect x="2.8" y="2.8" width="1.4" height="3" rx="0.4"/></svg>
+      </button>
+      {show && (
+        <div className="absolute left-5 top-1/2 -translate-y-1/2 z-50 w-56 px-3 py-2 bg-card-hover border border-border-light rounded-lg shadow-xl text-xs text-foreground leading-relaxed pointer-events-none">
+          {tip}
+        </div>
+      )}
+    </span>
   );
 }
 
@@ -167,7 +264,10 @@ function InputControl({
   return (
     <div>
       <div className="flex justify-between items-center mb-1.5">
-        <label className="text-xs text-muted">{config.label}</label>
+        <div className="flex items-center gap-1.5">
+          <label className="text-xs text-muted">{config.label}</label>
+          <InfoIcon tip={config.tip} />
+        </div>
         <span className="text-xs font-mono font-medium text-accent">{displayValue}</span>
       </div>
       <input

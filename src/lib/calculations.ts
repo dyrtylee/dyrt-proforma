@@ -55,10 +55,10 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
   const totalCapex = Object.values(capexBreakdown).reduce((sum, v) => sum + v, 0);
 
   // --- CAPACITY ---
-  // Equipment capacity from composters, but capped by user-set maxTonsPerDay
-  const equipmentCapacityLbs = inputs.numComposters * inputs.composterCapacityLbs;
-  const equipmentCapacityTons = equipmentCapacityLbs / 2000;
-  const maxDailyCapacityTons = Math.min(equipmentCapacityTons, inputs.maxTonsPerDay);
+  // maxTonsPerDay is the facility throughput ceiling (set by user).
+  // Composter count informs CAPEX but does not limit tonnage — the user
+  // controls capacity directly via the max tons/day slider.
+  const maxDailyCapacityTons = inputs.maxTonsPerDay;
   const maxDailyCapacityLbs = maxDailyCapacityTons * 2000;
 
   // --- SAWDUST RATIO ---

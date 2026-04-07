@@ -60,11 +60,12 @@ export interface FacilityInputs {
   // Labor escalation
   laborEscalatorRate: number; // annual % increase (0-1), e.g. 0.03 = 3%/yr
 
-  // Ramp & Growth
-  rampMonths: number; // months to reach initial capacity
+  // Growth
   startingTonnage: number; // starting tons/day
-  annualTonnageGrowth: number; // annual % growth in tonnage (0-1), e.g. 0.15 = 15%/yr
-  startingUtilization: number; // legacy — kept for compat
+  annualTonnageGrowth: number; // annual % growth in tonnage (0-1)
+  maxTonsPerDay: number; // hard cap on daily tonnage
+  rampMonths: number; // legacy
+  startingUtilization: number; // legacy
 
   // Financing
   loanInterestRate: number; // annual (0-1)

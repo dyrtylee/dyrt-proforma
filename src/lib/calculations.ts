@@ -55,11 +55,11 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
   const totalCapex = Object.values(capexBreakdown).reduce((sum, v) => sum + v, 0);
 
   // --- CAPACITY ---
-  // composterCapacityLbs = lbs of RAW food waste each composter can process per day.
-  // The dewaterer reduces this weight before it enters the composting vessel,
-  // but the rated capacity is based on raw food waste throughput.
-  const maxDailyCapacityLbs = inputs.numComposters * inputs.composterCapacityLbs;
-  const maxDailyCapacityTons = maxDailyCapacityLbs / 2000;
+  // Equipment capacity from composters, but capped by user-set maxTonsPerDay
+  const equipmentCapacityLbs = inputs.numComposters * inputs.composterCapacityLbs;
+  const equipmentCapacityTons = equipmentCapacityLbs / 2000;
+  const maxDailyCapacityTons = Math.min(equipmentCapacityTons, inputs.maxTonsPerDay);
+  const maxDailyCapacityLbs = maxDailyCapacityTons * 2000;
 
   // --- SAWDUST RATIO ---
   const sawdustRatio = calcSawdustRatio(inputs.cnRatio, inputs.foodWasteCN, inputs.sawdustCN);

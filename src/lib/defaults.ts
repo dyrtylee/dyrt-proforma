@@ -29,7 +29,7 @@ export const defaultInputs: FacilityInputs = {
   sawdustDensityLbsPerCY: 350, // ~350 lbs per cubic yard of sawdust
 
   // Operating Costs (monthly)
-  facilityLease: 15000,
+  facilityLease: 50000,
   numEmployees: 10,
   hourlyRate: 30, // $/hr
   payrollTaxRate: 0.20,
@@ -64,8 +64,9 @@ export const defaultInputs: FacilityInputs = {
 
   // Ramp & Growth
   rampMonths: 12,
-  startingTonnage: 5, // tons/day starting
-  annualTonnageGrowth: 0.35, // 35% annual growth in tonnage
+  startingTonnage: 15, // tons/day starting
+  annualTonnageGrowth: 0.65, // 65% annual growth in tonnage
+  maxTonsPerDay: 100, // hard cap
   startingUtilization: 0.15, // legacy
 
   // Financing
@@ -138,6 +139,9 @@ export const inputConfigs: InputConfig[] = [
   { key: "liquidDensityLbsPerGallon", label: "Liquid Density (lbs/gal)", min: 7.0, max: 10.0, step: 0.1, format: "number", group: "Digester Liquid Disposal" },
 
   // Revenue
+  { key: "startingTonnage", label: "Starting Tonnage (tons/day)", min: 1, max: 50, step: 1, format: "number", group: "Revenue" },
+  { key: "annualTonnageGrowth", label: "Annual Tonnage Growth", min: 0, max: 1.00, step: 0.05, format: "percent", group: "Revenue" },
+  { key: "maxTonsPerDay", label: "Max Tons per Day", min: 10, max: 500, step: 5, format: "number", group: "Revenue" },
   { key: "tippingFeePerLb", label: "Tipping Fee (per lb)", min: 0.03, max: 0.25, step: 0.005, format: "currency", group: "Revenue" },
   { key: "compostPricePerCY", label: "Compost Sale Price (per CY)", min: 10, max: 80, step: 5, format: "currency", group: "Revenue" },
   { key: "compostShrinkage", label: "Compost Volume Shrinkage", min: 0.20, max: 0.60, step: 0.05, format: "percent", group: "Revenue" },
@@ -147,13 +151,11 @@ export const inputConfigs: InputConfig[] = [
   { key: "trailerCapacityTons", label: "53' Trailer Capacity (tons)", min: 15, max: 30, step: 1, format: "number", group: "Shipping" },
   { key: "shippingCostPerLoad", label: "Shipping Cost per Load", min: 500, max: 5000, step: 100, format: "currency", group: "Shipping" },
 
-  // Ramp
-  { key: "startingTonnage", label: "Starting Tonnage (tons/day)", min: 1, max: 50, step: 1, format: "number", group: "Ramp & Financing" },
-  { key: "annualTonnageGrowth", label: "Annual Tonnage Growth", min: 0.05, max: 1.00, step: 0.05, format: "percent", group: "Ramp & Financing" },
-  { key: "loanInterestRate", label: "Loan Interest Rate", min: 0.04, max: 0.15, step: 0.005, format: "percent", group: "Ramp & Financing" },
-  { key: "loanTermYears", label: "Loan Term (years)", min: 3, max: 20, step: 1, format: "number", group: "Ramp & Financing" },
-  { key: "equityPercentage", label: "Equity % of CAPEX", min: 0, max: 1, step: 0.05, format: "percent", group: "Ramp & Financing" },
-  { key: "projectionMonths", label: "Projection Period (months)", min: 12, max: 120, step: 6, format: "number", group: "Ramp & Financing" },
+  // Financing
+  { key: "loanInterestRate", label: "Loan Interest Rate", min: 0.04, max: 0.15, step: 0.005, format: "percent", group: "Financing" },
+  { key: "loanTermYears", label: "Loan Term (years)", min: 3, max: 20, step: 1, format: "number", group: "Financing" },
+  { key: "equityPercentage", label: "Equity % of CAPEX", min: 0, max: 1, step: 0.05, format: "percent", group: "Financing" },
+  { key: "projectionMonths", label: "Projection Period (months)", min: 12, max: 120, step: 6, format: "number", group: "Financing" },
 ];
 
 export const groupOrder = [
@@ -164,5 +166,5 @@ export const groupOrder = [
   "Facility CAPEX",
   "Carbon & Amendments",
   "Shipping",
-  "Ramp & Financing",
+  "Financing",
 ];

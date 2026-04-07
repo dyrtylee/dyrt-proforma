@@ -653,21 +653,28 @@ function ProjectionsTab({ result }: { result: ReturnType<typeof calculateProForm
 // --- Sensitivity Tab ---
 function SensitivityTab({ inputs }: { inputs: FacilityInputs }) {
   const scenarios = useMemo(() => {
-    const results: { variable: string; low: number; base: number; high: number; lowMargin: number; baseMargin: number; highMargin: number }[] = [];
+    const results: { variable: string; lowStr: string; baseStr: string; highStr: string; lowMargin: number; baseMargin: number; highMargin: number }[] = [];
 
     const baseResult = calculateProForma(inputs);
     const baseSteady = baseResult.monthlyProjections.find((p) => p.utilization >= 1.0);
     const baseMargin = baseSteady?.netMargin ?? 0;
 
-    const scenariosConfig: { variable: string; key: keyof FacilityInputs; low: number; high: number }[] = [
-      { variable: "Tipping Fee ($/lb)", key: "tippingFeePerLb", low: inputs.tippingFeePerLb * 0.7, high: inputs.tippingFeePerLb * 1.3 },
-      { variable: "# Composters", key: "numComposters", low: Math.max(6, inputs.numComposters - 8), high: inputs.numComposters + 12 },
-      { variable: "Facility Lease", key: "facilityLease", low: inputs.facilityLease * 0.7, high: inputs.facilityLease * 1.3 },
-      { variable: "Composter Cost", key: "composterCost", low: inputs.composterCost * 0.7, high: inputs.composterCost * 1.3 },
-      { variable: "Labor Costs", key: "laborQCSorting", low: inputs.laborQCSorting * 0.7, high: inputs.laborQCSorting * 1.3 },
-      { variable: "Compost Price ($/CY)", key: "compostPricePerCY", low: inputs.compostPricePerCY * 0.5, high: inputs.compostPricePerCY * 1.5 },
-      { variable: "Dewatering %", key: "dewateringReduction", low: 0.65, high: 0.90 },
+    const scenariosConfig: { variable: string; key: keyof FacilityInputs; low: number; high: number; fmt: "currency" | "currency-sm" | "percent" | "number" }[] = [
+      { variable: "Tipping Fee ($/lb)", key: "tippingFeePerLb", low: inputs.tippingFeePerLb * 0.7, high: inputs.tippingFeePerLb * 1.3, fmt: "currency-sm" },
+      { variable: "# Composters", key: "numComposters", low: Math.max(6, inputs.numComposters - 8), high: inputs.numComposters + 12, fmt: "number" },
+      { variable: "Facility Lease", key: "facilityLease", low: inputs.facilityLease * 0.7, high: inputs.facilityLease * 1.3, fmt: "currency" },
+      { variable: "Composter Cost", key: "composterCost", low: inputs.composterCost * 0.7, high: inputs.composterCost * 1.3, fmt: "currency" },
+      { variable: "Labor Costs", key: "laborQCSorting", low: inputs.laborQCSorting * 0.7, high: inputs.laborQCSorting * 1.3, fmt: "currency" },
+      { variable: "Compost Price ($/CY)", key: "compostPricePerCY", low: inputs.compostPricePerCY * 0.5, high: inputs.compostPricePerCY * 1.5, fmt: "currency" },
+      { variable: "Dewatering %", key: "dewateringReduction", low: 0.65, high: 0.90, fmt: "percent" },
     ];
+
+    const fmtVal = (v: number, f: string) => {
+      if (f === "percent") return fmtPercent(v);
+      if (f === "currency-sm") return `$${v.toFixed(3)}`;
+      if (f === "currency") return fmtCurrency(v);
+      return fmtNumber(v);
+    };
 
     for (const sc of scenariosConfig) {
       const lowResult = calculateProForma({ ...inputs, [sc.key]: sc.low });
@@ -677,9 +684,9 @@ function SensitivityTab({ inputs }: { inputs: FacilityInputs }) {
 
       results.push({
         variable: sc.variable,
-        low: sc.low,
-        base: inputs[sc.key] as number,
-        high: sc.high,
+        lowStr: fmtVal(sc.low, sc.fmt),
+        baseStr: fmtVal(inputs[sc.key] as number, sc.fmt),
+        highStr: fmtVal(sc.high, sc.fmt),
         lowMargin: lowSteady?.netMargin ?? 0,
         baseMargin,
         highMargin: highSteady?.netMargin ?? 0,
@@ -733,9 +740,9 @@ function SensitivityTab({ inputs }: { inputs: FacilityInputs }) {
             {scenarios.map((s) => (
               <tr key={s.variable} className="border-b border-gray-100">
                 <td className="py-2 font-medium">{s.variable}</td>
-                <td className="py-2 text-right font-mono text-sm">{s.low < 1 ? fmtPercent(s.low) : fmtNumber(s.low)}</td>
-                <td className="py-2 text-right font-mono text-sm">{s.base < 1 ? fmtPercent(s.base) : fmtNumber(s.base)}</td>
-                <td className="py-2 text-right font-mono text-sm">{s.high < 1 ? fmtPercent(s.high) : fmtNumber(s.high)}</td>
+                <td className="py-2 text-right font-mono text-sm">{s.lowStr}</td>
+                <td className="py-2 text-right font-mono text-sm">{s.baseStr}</td>
+                <td className="py-2 text-right font-mono text-sm">{s.highStr}</td>
                 <td className={`py-2 text-right font-mono ${s.lowMargin < 0 ? "text-red-600" : "text-green-600"}`}>{fmtPercent(s.lowMargin)}</td>
                 <td className={`py-2 text-right font-mono ${s.baseMargin < 0 ? "text-red-600" : "text-green-600"}`}>{fmtPercent(s.baseMargin)}</td>
                 <td className={`py-2 text-right font-mono ${s.highMargin < 0 ? "text-red-600" : "text-green-600"}`}>{fmtPercent(s.highMargin)}</td>

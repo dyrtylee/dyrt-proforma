@@ -3,7 +3,7 @@ import { FacilityInputs } from "./types";
 export const defaultInputs: FacilityInputs = {
   // Equipment CAPEX
   numComposters: 18,
-  composterCost: 85000,
+  composterCost: 65000,
   composterCapacityLbs: 2500, // lbs raw food waste per composter per day
   dewatererCost: 150000,
   dewateringReduction: 0.80, // 80% weight reduction
@@ -56,7 +56,7 @@ export const defaultInputs: FacilityInputs = {
 
   // Shipping
   trailerCapacityTons: 25, // 53' trailer capacity
-  shippingCostPerLoad: 1500,
+  shippingCostPerLoad: 800,
 
   // Ramp
   rampMonths: 12,

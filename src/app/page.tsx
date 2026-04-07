@@ -328,25 +328,37 @@ function CapexTab({ result }: { result: ReturnType<typeof calculateProForma> }) 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardTitle>CAPEX Distribution</CardTitle>
-          <ResponsiveContainer width="100%" height={400}>
-            <PieChart>
-              <Pie
-                data={pieData}
-                cx="50%"
-                cy="50%"
-                outerRadius={140}
-                dataKey="value"
-                stroke="#0a0e1a"
-                strokeWidth={2}
-                label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
-              >
-                {pieData.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip contentStyle={tooltipStyle} formatter={fmt(fmtCurrencyFull)} />
-            </PieChart>
-          </ResponsiveContainer>
+          <div className="flex flex-col items-center">
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={70}
+                  outerRadius={120}
+                  dataKey="value"
+                  stroke="#0a0e1a"
+                  strokeWidth={2}
+                  paddingAngle={2}
+                >
+                  {pieData.map((_, i) => (
+                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={tooltipStyle} formatter={fmt(fmtCurrencyFull)} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 mt-2 w-full px-2">
+              {pieData.map((item, i) => (
+                <div key={item.name} className="flex items-center gap-2 text-xs">
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                  <span className="text-muted truncate">{item.name}</span>
+                  <span className="text-foreground font-mono ml-auto">{((item.value / result.totalCapex) * 100).toFixed(0)}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </Card>
 
         <Card>
@@ -423,8 +435,8 @@ function OperationsTab({ result, inputs }: { result: ReturnType<typeof calculate
           <Card>
             <CardTitle>Monthly Cost Breakdown (Steady State)</CardTitle>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <ResponsiveContainer width="100%" height={300}>
+              <div className="flex flex-col items-center">
+                <ResponsiveContainer width="100%" height={240}>
                   <PieChart>
                     <Pie
                       data={[
@@ -438,11 +450,12 @@ function OperationsTab({ result, inputs }: { result: ReturnType<typeof calculate
                       ]}
                       cx="50%"
                       cy="50%"
-                      outerRadius={110}
+                      innerRadius={55}
+                      outerRadius={95}
                       dataKey="value"
                       stroke="#0a0e1a"
                       strokeWidth={2}
-                      label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                      paddingAngle={2}
                     >
                       {COLORS.slice(0, 7).map((c, i) => (
                         <Cell key={i} fill={c} />

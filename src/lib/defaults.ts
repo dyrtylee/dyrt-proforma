@@ -140,7 +140,7 @@ export const inputConfigs: InputConfig[] = [
 
   // Revenue
   { key: "startingTonnage", label: "Starting Tonnage (tons/day)", min: 1, max: 50, step: 1, format: "number", group: "Revenue" },
-  { key: "annualTonnageGrowth", label: "Annual Tonnage Growth", min: 0, max: 1.00, step: 0.05, format: "percent", group: "Revenue" },
+  { key: "annualTonnageGrowth", label: "Annual Tonnage Growth", min: 0, max: 10.00, step: 0.05, format: "percent", group: "Revenue" },
   { key: "maxTonsPerDay", label: "Max Tons per Day", min: 10, max: 500, step: 5, format: "number", group: "Revenue" },
   { key: "tippingFeePerLb", label: "Tipping Fee (per lb)", min: 0.03, max: 0.25, step: 0.005, format: "currency", group: "Revenue" },
   { key: "compostPricePerCY", label: "Compost Sale Price (per CY)", min: 10, max: 80, step: 5, format: "currency", group: "Revenue" },

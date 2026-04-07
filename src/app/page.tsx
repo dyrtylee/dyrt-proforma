@@ -5,6 +5,7 @@ import { defaultInputs, inputConfigs, groupOrder } from "@/lib/defaults";
 import { calculateProForma } from "@/lib/calculations";
 import { FacilityInputs } from "@/lib/types";
 import { fmtCurrency, fmtCurrencyFull, fmtPercent, fmtNumber, fmtTons } from "@/lib/format";
+import { exportToExcel as doExport } from "@/lib/export";
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -50,65 +51,7 @@ export default function ProFormaPage() {
   const groups = groupOrder.filter((g) => inputConfigs.some((c) => c.group === g));
 
   function exportToExcel() {
-    const BOM = "\uFEFF";
-    const sheets: string[] = [];
-
-    // Summary sheet
-    sheets.push("FACILITY PRO FORMA - DYRT LABS");
-    sheets.push(`Generated,${new Date().toLocaleDateString()}`);
-    sheets.push("");
-    sheets.push("KEY METRICS");
-    sheets.push(`Total CAPEX,${result.totalCapex}`);
-    sheets.push(`Max Daily Capacity (tons),${result.maxDailyCapacityTons.toFixed(1)}`);
-    sheets.push(`Break-Even (tons/day),${result.breakEven.breakEvenTonsPerDay.toFixed(1)}`);
-    sheets.push(`Break-Even Month,${result.breakEven.breakEvenMonth ?? "N/A"}`);
-    sheets.push(`Steady-State Net Margin,${(result.steadyStateMargin * 100).toFixed(1)}%`);
-    sheets.push(`CAPEX Payback (months),${result.paybackMonths ?? "N/A"}`);
-    sheets.push("");
-
-    // Inputs
-    sheets.push("INPUT ASSUMPTIONS");
-    for (const config of inputConfigs) {
-      const val = inputs[config.key] as number;
-      const display = config.format === "percent" ? `${(val * 100).toFixed(1)}%` : val;
-      sheets.push(`${config.label},${display}`);
-    }
-    sheets.push("");
-
-    // CAPEX
-    sheets.push("CAPEX BREAKDOWN");
-    sheets.push("Item,Cost");
-    for (const [name, value] of Object.entries(result.capexBreakdown)) {
-      sheets.push(`${name},${value}`);
-    }
-    sheets.push(`Total,${result.totalCapex}`);
-    sheets.push("");
-
-    // Monthly projections
-    sheets.push("MONTHLY PROJECTIONS");
-    sheets.push("Month,Utilization,Tons/Day,Monthly Tons,Revenue,Operating Costs,Net Profit,Net Margin,Cumulative P&L");
-    for (const p of result.monthlyProjections) {
-      sheets.push([
-        p.month,
-        `${(p.utilization * 100).toFixed(1)}%`,
-        p.dailyTonsIn.toFixed(1),
-        p.monthlyTonsIn.toFixed(0),
-        p.totalRevenue.toFixed(0),
-        p.totalOpex.toFixed(0),
-        p.netProfit.toFixed(0),
-        `${(p.netMargin * 100).toFixed(1)}%`,
-        p.cumulativeProfit.toFixed(0),
-      ].join(","));
-    }
-
-    const csv = BOM + sheets.join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Dyrt_ProForma_${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    doExport(inputs, result);
   }
 
   return (

@@ -2,7 +2,7 @@ import { FacilityInputs } from "./types";
 
 export const defaultInputs: FacilityInputs = {
   // Equipment CAPEX
-  numComposters: 18,
+  numComposters: 80, // auto-calculated: ceil(maxTonsPerDay * 2000 / composterCapacityLbs)
   composterCost: 65000,
   composterCapacityLbs: 2500, // lbs raw food waste per composter per day
   dewatererCost: 150000,
@@ -90,7 +90,7 @@ export interface InputConfig {
 
 export const inputConfigs: InputConfig[] = [
   // Equipment CAPEX
-  { key: "numComposters", label: "Number of Composters", tip: "Rotary drum composting units at the facility. Drives CAPEX only — tonnage is set by the Revenue sliders.", min: 1, max: 100, step: 1, format: "number", group: "Equipment CAPEX" },
+  { key: "numComposters", label: "Composters Required", tip: "Auto-calculated from Max Tons per Day and composter capacity. Each composter handles 2,500 lbs/day of raw food waste.", min: 1, max: 200, step: 1, format: "number", group: "Equipment CAPEX" },
   { key: "composterCost", label: "Cost per Composter", tip: "Purchase price per composting unit. Contract manufacturing ~$85K, in-house ~$60K.", min: 30000, max: 150000, step: 5000, format: "currency-large", group: "Equipment CAPEX" },
   { key: "composterCapacityLbs", label: "Composter Capacity (lbs/day)", tip: "Raw food waste each composter can process per day before dewatering.", min: 500, max: 5000, step: 100, format: "number", group: "Equipment CAPEX" },
   { key: "dewatererCost", label: "Dewaterer Cost", tip: "Mechanical press that removes water from food waste before composting.", min: 50000, max: 500000, step: 10000, format: "currency-large", group: "Equipment CAPEX" },

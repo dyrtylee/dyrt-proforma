@@ -62,10 +62,26 @@ export default function ProFormaPage() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(["Revenue"]));
   const [walkStep, setWalkStep] = useState<number | null>(null);
 
-  const result = useMemo(() => calculateProForma(inputs), [inputs]);
+  // Auto-compute composters needed from max tonnage capacity
+  const computedInputs = useMemo(() => {
+    const needed = Math.ceil((inputs.maxTonsPerDay * 2000) / inputs.composterCapacityLbs);
+    if (needed !== inputs.numComposters) {
+      return { ...inputs, numComposters: needed };
+    }
+    return inputs;
+  }, [inputs]);
+
+  const result = useMemo(() => calculateProForma(computedInputs), [computedInputs]);
 
   function updateInput(key: keyof FacilityInputs, value: number) {
-    setInputs((prev) => ({ ...prev, [key]: value }));
+    setInputs((prev) => {
+      const next = { ...prev, [key]: value };
+      // Recompute composters when tonnage or capacity changes
+      if (key === "maxTonsPerDay" || key === "composterCapacityLbs") {
+        next.numComposters = Math.ceil((next.maxTonsPerDay * 2000) / next.composterCapacityLbs);
+      }
+      return next;
+    });
   }
 
   function toggleGroup(group: string) {
@@ -80,7 +96,7 @@ export default function ProFormaPage() {
   const groups = groupOrder.filter((g) => inputConfigs.some((c) => c.group === g));
 
   function exportToExcel() {
-    doExport(inputs, result);
+    doExport(computedInputs, result);
   }
 
   return (
@@ -204,13 +220,13 @@ export default function ProFormaPage() {
             <InfoIcon tip={TAB_DESCRIPTIONS[activeTab]} />
             <span>{TAB_DESCRIPTIONS[activeTab]}</span>
           </div>
-          {activeTab === "Summary" && <SummaryTab result={result} inputs={inputs} />}
+          {activeTab === "Summary" && <SummaryTab result={result} inputs={computedInputs} />}
           {activeTab === "CAPEX" && <CapexTab result={result} />}
-          {activeTab === "Operations" && <OperationsTab result={result} inputs={inputs} />}
-          {activeTab === "Break-Even" && <BreakEvenTab result={result} inputs={inputs} />}
+          {activeTab === "Operations" && <OperationsTab result={result} inputs={computedInputs} />}
+          {activeTab === "Break-Even" && <BreakEvenTab result={result} inputs={computedInputs} />}
           {activeTab === "Projections" && <ProjectionsTab result={result} />}
-          {activeTab === "Sensitivity" && <SensitivityTab inputs={inputs} />}
-          {activeTab === "Loan" && <LoanTab inputs={inputs} result={result} />}
+          {activeTab === "Sensitivity" && <SensitivityTab inputs={computedInputs} />}
+          {activeTab === "Loan" && <LoanTab inputs={computedInputs} result={result} />}
         </div>
       </main>
 

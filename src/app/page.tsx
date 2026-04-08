@@ -38,12 +38,22 @@ const TAB_DESCRIPTIONS: Record<Tab, string> = {
   Loan: "Full amortization schedule with principal/interest split and payoff timeline.",
 };
 
+// The 5 biggest levers in the model — shown at top of sidebar AND in their original groups
+const KEY_ASSUMPTIONS: (keyof FacilityInputs)[] = [
+  "startingTonnage",
+  "annualTonnageGrowth",
+  "tippingFeePerLb",
+  "numEmployees",
+  "facilityLease",
+];
+
 const WALKTHROUGH_STEPS = [
   { title: "Welcome to the Dyrt Facility Pro Forma", body: "This interactive model lets you explore the economics of a single composting facility buildout. Every variable is adjustable — the charts and financials update in real time." },
-  { title: "Sidebar: Adjust Assumptions", body: "The left panel contains all input variables organized by category. Start with Revenue to set your tonnage growth, then explore operating costs, equipment CAPEX, and financing terms." },
-  { title: "Tabs: Explore the Financials", body: "Each tab shows a different view of the model — from high-level summary KPIs to detailed break-even analysis, monthly projections, sensitivity testing, and loan amortization." },
-  { title: "Export to Excel", body: "Click the Export button to download a bank-ready .xlsx file with Assumptions, Income Statement, Cash Flow Statement, Balance Sheet, and Monthly Detail tabs." },
-  { title: "Info Icons", body: "Hover over the info icons next to any variable to see a description of what it controls and how it affects the model." },
+  { title: "Key Assumptions", body: "The top of the sidebar highlights the 5 variables with the biggest impact on the model: starting tonnage, growth rate, tipping fee, headcount, and rent. These are mirrored in their original sections below — adjusting either one updates both." },
+  { title: "Sidebar: All Variables", body: "Below the key assumptions, every input is organized by category. Expand any group to fine-tune equipment costs, carbon ratios, digester logistics, shipping, and financing terms." },
+  { title: "Tabs: Explore the Financials", body: "Each tab shows a different view — from high-level summary KPIs to detailed break-even analysis, monthly projections, sensitivity testing, and loan amortization." },
+  { title: "Export to Excel", body: "Click Export to download a bank-ready .xlsx with Assumptions, Income Statement, Cash Flow Statement, Balance Sheet, and Monthly Detail — formatted for investors and lenders." },
+  { title: "Info Icons", body: "Hover over the info icons next to any variable to see what it controls and how it affects the model." },
 ];
 
 export default function ProFormaPage() {
@@ -113,6 +123,27 @@ export default function ProFormaPage() {
           </div>
         </div>
         <div className="px-3 py-3 space-y-1">
+          {/* Key Assumptions — top 5 levers */}
+          <div className="rounded-xl border border-accent/20 bg-accent/5 overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-accent/15">
+              <span className="font-semibold text-sm text-accent">Key Assumptions</span>
+            </div>
+            <div className="px-4 py-3 space-y-4">
+              {KEY_ASSUMPTIONS.map((key) => {
+                const config = inputConfigs.find((c) => c.key === key);
+                if (!config) return null;
+                return (
+                  <InputControl
+                    key={`key-${config.key}`}
+                    config={config}
+                    value={inputs[config.key] as number}
+                    onChange={(v) => updateInput(config.key, v)}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
           {groups.map((group) => {
             const isExpanded = expandedGroups.has(group);
             const groupConfigs = inputConfigs.filter((c) => c.group === group);

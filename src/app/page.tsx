@@ -589,11 +589,12 @@ function OperationsTab({ result, inputs }: { result: ReturnType<typeof calculate
 
       {steadyMonth && (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             <KPI label="Daily Intake" value={fmtTons(steadyMonth.dailyTonsIn)} sub={`${fmtNumber(steadyMonth.dailyTonsIn * 2000)} lbs/day`} color="accent" />
             <KPI label="Liquid to Digester" value={`${fmtNumber(steadyMonth.sludgeGallons / 26)} gal/day`} sub={`${steadyMonth.digesterTruckloads} tanker loads/mo | ${fmtCurrencyFull(steadyMonth.digesterDisposalCost + steadyMonth.digesterHaulingCost)}/mo`} color="orange" />
             <KPI label="Sawdust / Month" value={`${steadyMonth.sawdustNeededCY.toFixed(0)} CY`} sub={fmtCurrencyFull(steadyMonth.sawdustCost) + "/mo"} color="purple" />
             <KPI label="Compost Out" value={`${steadyMonth.compostProducedCY.toFixed(0)} CY/mo`} sub={`${steadyMonth.truckloadsCompost} truckloads`} color="green" />
+            <KPI label="Customers / Bins" value={`${steadyMonth.estimatedCustomers} locations`} sub={`${steadyMonth.binCustomers} bin customers | ${fmtNumber(steadyMonth.totalBinsNeeded)} bins (${fmtCurrencyFull(steadyMonth.binCapex)})`} color="accent" />
           </div>
 
           <Card>

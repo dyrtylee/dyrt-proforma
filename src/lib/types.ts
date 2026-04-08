@@ -12,6 +12,13 @@ export interface FacilityInputs {
   curingSystemCost: number;
   leachateManagementCost: number;
 
+  // Bins
+  binCost: number; // $ per bin
+  pctBinCustomers: number; // % of locations using bins (0-1)
+  avgBinsPerLocation: number; // bins deployed at each bin-customer
+  binFactor: number; // total bins per deployed bin (transit, wash, buffer)
+  avgTonsPerCustomer: number; // avg tons/day per customer, to derive location count
+
   // Facility CAPEX
   facilityBuildoutCost: number;
   numTrucks: number;
@@ -88,6 +95,12 @@ export interface MonthlyProjection {
   compostProducedLbs: number;
   compostProducedCY: number;
   truckloadsCompost: number;
+
+  // Bins / Customers
+  estimatedCustomers: number;
+  binCustomers: number;
+  totalBinsNeeded: number;
+  binCapex: number;
 
   // Digester liquid
   sludgeGallons: number;

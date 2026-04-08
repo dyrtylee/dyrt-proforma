@@ -37,6 +37,12 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
   const compostersTotal = inputs.numComposters * inputs.composterCost;
   const trucksTotal = inputs.numTrucks * inputs.truckCost;
 
+  // Initial bin CAPEX based on max capacity customer count
+  const maxCustomers = Math.ceil(inputs.maxTonsPerDay / inputs.avgTonsPerCustomer);
+  const maxBinCustomers = Math.ceil(maxCustomers * inputs.pctBinCustomers);
+  const initialBins = Math.ceil(maxBinCustomers * inputs.avgBinsPerLocation * inputs.binFactor);
+  const binCapexTotal = initialBins * inputs.binCost;
+
   const capexBreakdown: Record<string, number> = {
     "Composters": compostersTotal,
     "Dewaterer": inputs.dewatererCost,
@@ -46,6 +52,7 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
     "Carbon Dosing": inputs.carbonDosingCost,
     "Curing System": inputs.curingSystemCost,
     "Leachate Mgmt": inputs.leachateManagementCost,
+    "Collection Bins": binCapexTotal,
     "Facility Buildout": inputs.facilityBuildoutCost,
     "Collection Fleet": trucksTotal,
     "Skid Steer/Forklift": inputs.skidSteerForkliftCost,
@@ -109,6 +116,12 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
     const laborMultiplier = Math.pow(1 + inputs.laborEscalatorRate, yearsElapsed);
     const escalatedLabor = totalLabor * laborMultiplier;
 
+    // Customer / bin estimation
+    const estimatedCustomers = Math.ceil(dailyTonsIn / inputs.avgTonsPerCustomer);
+    const binCustomers = Math.ceil(estimatedCustomers * inputs.pctBinCustomers);
+    const totalBinsNeeded = Math.ceil(binCustomers * inputs.avgBinsPerLocation * inputs.binFactor);
+    const binCapex = totalBinsNeeded * inputs.binCost;
+
     // Dewatering
     const dewateredLbs = monthlyLbsIn * (1 - inputs.dewateringReduction);
     const sludgeToDigesterLbs = monthlyLbsIn * inputs.dewateringReduction;
@@ -162,6 +175,10 @@ export function calculateProForma(inputs: FacilityInputs): ProFormaResult {
       compostProducedLbs: rawCompostLbs,
       compostProducedCY: compostCY,
       truckloadsCompost,
+      estimatedCustomers,
+      binCustomers,
+      totalBinsNeeded,
+      binCapex,
       sludgeGallons,
       digesterDisposalCost,
       digesterHaulingCost,

@@ -14,6 +14,13 @@ export const defaultInputs: FacilityInputs = {
   curingSystemCost: 15000,
   leachateManagementCost: 25000,
 
+  // Bins
+  binCost: 57,
+  pctBinCustomers: 0.47, // 47% bin, rest pallet-only (from Dyrt DB)
+  avgBinsPerLocation: 9, // avg bins deployed per bin-customer
+  binFactor: 2.3, // bins needed per deployed bin (transit + wash + buffer)
+  avgTonsPerCustomer: 0.57, // ~1,140 lbs/day per customer avg
+
   // Facility CAPEX
   facilityBuildoutCost: 235000,
   numTrucks: 4,
@@ -102,6 +109,13 @@ export const inputConfigs: InputConfig[] = [
   { key: "curingSystemCost", label: "Curing System", tip: "Windrow or bay system where compost matures for 4-8 weeks after active composting.", min: 5000, max: 100000, step: 5000, format: "currency-large", group: "Equipment CAPEX" },
   { key: "leachateManagementCost", label: "Leachate Management", tip: "Collection and treatment system for liquid runoff from the composting process.", min: 5000, max: 100000, step: 5000, format: "currency-large", group: "Equipment CAPEX" },
 
+  // Bins & Customers
+  { key: "binCost", label: "Cost per Bin", tip: "Purchase price per 35/65-gallon collection bin. Blended avg from Dyrt operations.", min: 20, max: 100, step: 1, format: "currency", group: "Bins & Customers" },
+  { key: "pctBinCustomers", label: "% Bin Customers", tip: "47% of Dyrt customers use bins (hospitality, venues). Rest are pallet-only (produce, wholesale).", min: 0.10, max: 0.80, step: 0.01, format: "percent", group: "Bins & Customers" },
+  { key: "avgBinsPerLocation", label: "Avg Bins per Location", tip: "Average bins deployed at each bin-customer. Dyrt DB shows ~9 bins/visit across bin accounts.", min: 2, max: 30, step: 1, format: "number", group: "Bins & Customers" },
+  { key: "binFactor", label: "Bin Multiplier", tip: "Total bins needed per deployed bin — covers bins at customer, in transit, being washed, and buffer. 2.3x from operations data.", min: 1.5, max: 4.0, step: 0.1, format: "number", group: "Bins & Customers" },
+  { key: "avgTonsPerCustomer", label: "Avg Tons/Day per Customer", tip: "Average daily food waste per customer location. Derived from Dyrt DB: ~45 customers producing ~25.5 tons/day.", min: 0.2, max: 2.0, step: 0.05, format: "number", group: "Bins & Customers" },
+
   // Facility CAPEX
   { key: "facilityBuildoutCost", label: "Facility Buildout", tip: "Deposit, tenant improvements, dock upgrades, and office buildout for the facility.", min: 50000, max: 1000000, step: 25000, format: "currency-large", group: "Facility CAPEX" },
   { key: "numTrucks", label: "Number of Trucks", tip: "Collection vehicles for picking up food waste from customer locations.", min: 1, max: 10, step: 1, format: "number", group: "Facility CAPEX" },
@@ -161,6 +175,7 @@ export const groupOrder = [
   "Revenue",
   "Monthly Operating Costs",
   "Digester Liquid Disposal",
+  "Bins & Customers",
   "Equipment CAPEX",
   "Facility CAPEX",
   "Carbon & Amendments",

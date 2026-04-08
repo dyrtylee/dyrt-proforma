@@ -348,7 +348,7 @@ function SummaryTab({ result, inputs }: { result: ReturnType<typeof calculatePro
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <KPI label="Total CAPEX" value={fmtCurrency(result.totalCapex)} color="accent" />
         <KPI
           label="Break-Even"
@@ -368,6 +368,15 @@ function SummaryTab({ result, inputs }: { result: ReturnType<typeof calculatePro
           sub={result.paybackMonths ? `~${(result.paybackMonths / 12).toFixed(1)} years` : "Beyond projection"}
           color={result.paybackMonths ? "purple" : "orange"}
         />
+        <button
+          onClick={() => doExport(inputs, result)}
+          className="bg-card rounded-xl border border-border border-l-4 border-l-accent p-4 relative overflow-hidden text-left hover:bg-card-hover transition-colors group"
+        >
+          <div className="absolute top-0 right-0 w-20 h-20 bg-accent-dim rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl" />
+          <p className="text-xs text-muted uppercase tracking-wider">Export</p>
+          <p className="text-2xl font-bold text-foreground mt-1">Excel</p>
+          <p className="text-xs text-muted mt-1 group-hover:text-accent transition-colors">IS, SCF, BS + Monthly Detail</p>
+        </button>
       </div>
 
       <Card>

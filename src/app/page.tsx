@@ -62,9 +62,13 @@ export default function ProFormaPage() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(["Revenue"]));
   const [walkStep, setWalkStep] = useState<number | null>(null);
 
-  // Auto-compute composters needed from max tonnage capacity
+  // Auto-compute composters from peak tonnage reached during projection
+  // Peak = startingTonnage grown at annualTonnageGrowth over projectionMonths, capped by maxTonsPerDay
   const computedInputs = useMemo(() => {
-    const needed = Math.ceil((inputs.maxTonsPerDay * 2000) / inputs.composterCapacityLbs);
+    const monthlyGrowth = Math.pow(1 + inputs.annualTonnageGrowth, 1 / 12) - 1;
+    const peakDemand = inputs.startingTonnage * Math.pow(1 + monthlyGrowth, inputs.projectionMonths - 1);
+    const peakTons = Math.min(peakDemand, inputs.maxTonsPerDay);
+    const needed = Math.ceil((peakTons * 2000) / inputs.composterCapacityLbs);
     if (needed !== inputs.numComposters) {
       return { ...inputs, numComposters: needed };
     }
@@ -74,14 +78,7 @@ export default function ProFormaPage() {
   const result = useMemo(() => calculateProForma(computedInputs), [computedInputs]);
 
   function updateInput(key: keyof FacilityInputs, value: number) {
-    setInputs((prev) => {
-      const next = { ...prev, [key]: value };
-      // Recompute composters when tonnage or capacity changes
-      if (key === "maxTonsPerDay" || key === "composterCapacityLbs") {
-        next.numComposters = Math.ceil((next.maxTonsPerDay * 2000) / next.composterCapacityLbs);
-      }
-      return next;
-    });
+    setInputs((prev) => ({ ...prev, [key]: value }));
   }
 
   function toggleGroup(group: string) {
